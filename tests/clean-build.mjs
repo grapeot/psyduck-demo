@@ -36,6 +36,7 @@ try {
   await access(resolve(root, 'dist/models/psyduck_rigged.glb'));
   report.cacheVerifiedWithoutNetwork = (await prepareAssets(root, () => { throw new Error('Valid model cache must not fetch'); })).modelCached;
   assert.ok(report.cacheVerifiedWithoutNetwork);
+  run(['test']);
   run(['run', 'test:browser']);
   const browser = JSON.parse(await readFile(resolve(root, 'test-results/browser-report.json'), 'utf8'));
   assert.ok(browser.checks.realMediaPipe.timestamp > 0 && browser.checks.positiveMediaPipe.message.count === 33);

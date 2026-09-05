@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;background:white}canvas{display:block}</style></head><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { inspectConnectedSkin, inspectShoulderSections } from './rig-assertions.js';
+import { sculptHeadMetric, headRestMatrix } from './pose-reference-checks.js';
+const baseline = new URLSearchParams(location.search).has('baseline');
+const prefix = baseline ? '/test-results/pose-reference-baseline/' : '/';
+const { addOutlines, applyPose, preset, armBind, flipperShape } = await import(/* @vite-ignore */ `${prefix}src/rig.js`);
+const asset = baseline ? `${prefix}public/models/psyduck_rigged.glb` : '/models/psyduck_rigged.glb';
+const root = (await new GLTFLoader().loadAsync(asset)).scene;
+addOutlines(root);
+const scene = new THREE.Scene(); scene.add(root);
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setSize(1000,1000);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight('#fff5dd','#8c9d80',2.3));
+const light=new THREE.DirectionalLight('#fff3d7',2.2);light.position.set(-3,7,5);light.castShadow=true;
+light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-4,right:4,top:5,bottom:-4,near:.1,far:20});light.shadow.normalBias=.015;scene.add(light);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.ShadowMaterial({color:'#74806b',opacity:.12}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const camera=new THREE.PerspectiveCamera(32,1,.1,80),target=[0,1.65,0];
+const views={front:[0,2.9,10.7],rightQuarter:[6,3.3,9],rightSide:[10.7,2.9,0],leftQuarter:[-6,3.3,9],leftSide:[-10.7,2.9,0],back:[0,2.9,-10.7],shallowRight:[3,3,10.3]};
+const wave=preset('raiseOneArm');
+const poses={holdHead:preset('holdHead'),raiseOneArm:wave,waveLeft:{...wave,left:wave.right,right:wave.left,leftBend:wave.rightBend,rightBend:wave.leftBend},idle:preset('idle'),armsSpread:preset('armsSpread'),holdTilt:{...preset('holdHead'),head:.24,torso:.12}};
+window.referenceSetup={poses,views,camera:{fov:32,aspect:1,target},armBind,flipperShape,lighting:{hemisphere:2.3,directional:2.2,key:[-3,7,5],toneMapping:'ACES',exposure:1.05},topology:inspectConnectedSkin(root)};
+window.renderReference=(poseName,viewName)=>{
+  const pose=poses[poseName];applyPose(root,pose);camera.position.set(...views[viewName]);camera.lookAt(...target);camera.updateMatrixWorld(true);
+  const surface=root.getObjectByName('PsyduckSurface'),g=surface.geometry;
+  const toHeadRest=headRestMatrix(surface);
+  const pixel=p=>{const v=p.clone().project(camera);return [(v.x+1)*500,(1-v.y)*500];};
+  const center=pixel(new THREE.Vector3(0,2.22,.05));
+  let minX=Infinity,maxX=-Infinity;const p=new THREE.Vector3();
+  const names=surface.skeleton.bones.map(b=>b.name),armVertices={left:[],right:[]},restHeadSamples={left:0,right:0};
+  for(let i=0;i<g.attributes.position.count;i++){
+    const weights={};for(let k=0;k<4;k++){const name=names[g.attributes.skinIndex.array[i*4+k]];weights[name]=(weights[name]||0)+g.attributes.skinWeight.array[i*4+k];}
+    p.fromBufferAttribute(g.attributes.position,i);const restInsideHead=sculptHeadMetric(p.x,p.y,p.z)<1;surface.applyBoneTransform(i,p);
+    if(weights.head>=.95){const [x]=pixel(p);minX=Math.min(minX,x);maxX=Math.max(maxX,x);}
+    for(const side of ['left','right'])if(weights[`${side}Elbow`]>.1){armVertices[side].push(p.clone().applyMatrix4(toHeadRest).toArray());if(restInsideHead)restHeadSamples[side]++;}
+  }
+  const fk={};
+  for(const [side,sign] of [['left',-1],['right',1]]){
+    const shoulder=root.getObjectByName(`${side}Arm`).getWorldPosition(new THREE.Vector3());
+    const elbow=root.getObjectByName(`${side}Elbow`),joint=elbow.getWorldPosition(new THREE.Vector3());
+    const endpoint=elbow.localToWorld(new THREE.Vector3(0,-armBind.lower,0));
+    const headMetric=v=>v[0]**2+((v[1]-2.22)/.73)**2+((v[2]-.05)/.71)**2;
+    const a=pose[side],b=pose[`${side}Bend`];
+    fk[side]={shoulder:shoulder.toArray(),elbow:joint.toArray(),endpoint:endpoint.toArray(),reach:shoulder.distanceTo(endpoint),reachFraction:shoulder.distanceTo(endpoint)/(armBind.upper+armBind.lower),upperLength:shoulder.distanceTo(joint),lowerLength:joint.distanceTo(endpoint),angle:a,bend:b,elbowOutward:sign*(joint.x-shoulder.x),endpointHeadMetric:headMetric(endpoint.toArray()),surfaceElbowWeightThreshold:.1,forearmSurfaceMinHeadMetric:Math.min(...armVertices[side].map(headMetric)),forearmSurfaceInsideProxy:armVertices[side].filter(v=>headMetric(v)<1).length,forearmSurfaceVertices:armVertices[side].length,forearmSurfaceMinSculptHeadMetric:Math.min(...armVertices[side].map(v=>sculptHeadMetric(...v))),forearmSurfaceInsideSculptHead:armVertices[side].filter(v=>sculptHeadMetric(...v)<1).length};
+  }
+  for(const side of ['left','right'])fk[side].sampledVerticesOriginallyInsideHead=restHeadSamples[side];
+  renderer.render(scene,camera);
+  return {poseName,viewName,pose,headSurfaceFrame:'posed points mapped through inverse head bone into bind-world head field',headAlignment:{center,width:maxX-minX,minX,maxX,method:'projected upper-skull vertices with head weight >= .95; head center [0,2.22,.05]'},fk,sections:inspectShoulderSections(root)};
+};
+window.renderReference('holdHead','front');window.renderReady=true;
+</script></body></html>

@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;background:linear-gradient(#dfe6ce,#94bdb1)}canvas{display:block}</style></head><body><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { addOutlines, applyPose, preset } from '../src/rig.js';
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(700, 700); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 80);
+scene.add(new THREE.HemisphereLight('#fff5dd', '#8c9d80', 2.3));
+const light = new THREE.DirectionalLight('#fff3d7', 2.2); light.position.set(-3, 7, 5); light.castShadow = true;
+light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left:-4,right:4,top:5,bottom:-4,near:0.1,far:20 }); light.shadow.normalBias=0.015; scene.add(light);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(2.3,80),new THREE.MeshStandardMaterial({color:'#c4d0ad',roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.position.y=.004;ground.receiveShadow=true;scene.add(ground);
+const root = (await new GLTFLoader().loadAsync('/models/psyduck_rigged.glb')).scene;
+addOutlines(root);scene.add(root);window.inspectionRoot = root;
+const poses = {
+  idle: preset('idle'), armsSpread: preset('armsSpread'), raiseOneArm: preset('raiseOneArm'), holdHead: preset('holdHead'),
+  headTiltRaise: {...preset('raiseOneArm'), head:.24}, swayRaise: {...preset('raiseOneArm'),head:-.18,torso:-.12},
+  holdTilt: {...preset('holdHead'), head:.24,torso:.12}
+};
+const views = {front:[0,2.9,10.7],rightQuarter:[6,3.3,9],leftQuarter:[-6,3.3,9],back:[0,2.9,-10.7],rightSide:[10.7,2.9,0],leftSide:[-10.7,2.9,0]};
+window.shoulderMatrix={poses,views};
+window.inspectShoulder=(name,view)=>{applyPose(root,poses[name]);camera.position.set(...views[view]);camera.lookAt(0,1.65,0);renderer.render(scene,camera);};
+window.inspectShoulder('idle','front'); window.renderReady=true;
+</script></body></html>

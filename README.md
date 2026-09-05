@@ -38,6 +38,8 @@ npm audit
 
 浏览器测试覆盖实际 CPU Worker 空画面与公开姿态样例图推理，以及模拟摄像头、权限、取消、角色加载重试和资源释放。公开样例图首次测试时按固定摘要下载到被 Git 忽略的 `test-results/`，不进入生产包；来源见 `tests/prepare-pose-fixture.mjs`。没有开启真人相机；真人跟随准确性、体感延迟、Safari 和手机摄像头尚未验收。
 
+姿态参考对照是可选的本地研究工具：`node tests/pose-reference.mjs round3` 需要已有的 baseline、round2 截图/测量记录，以及 `references/psyduck_sugimori.jpg`、`psyduck_gen1_jp.jpg`、`psyduck_mystery_dungeon.jpg`。这些版权参考与本地历史工件不纳入 Git；默认 `npm test`、`npm run build` 和 `test:browser` 不依赖它们。对照只作等比头部对齐，不保证精确复刻不同手绘画法。完成浏览器测试和本地对照后，可运行 `node tests/final-artifacts.mjs` 汇集 app 截图与组合图；浏览器原始截图按每次运行的独立目录保留。
+
 ## 范围与保留内容
 
 - 生产 base 当前为 `/psyduck-demo/`，未来 Pages 仓库名不同时需调整。当前没有远端部署或 GitHub Actions 发布流程。

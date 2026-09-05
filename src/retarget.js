@@ -72,7 +72,7 @@ export class Retarget {
         const angle = clamp(Math.atan2(Math.max(0, dx), dy), 0.12, 2.85);
         const dot = (vx * (wrist.x - elbow.x) + vy * (wrist.y - elbow.y)) / (length * forearm);
         const bend = clamp(Math.acos(clamp(dot, -1, 1)) * 0.35, 0, 0.65);
-        [this.target[side], this.target[`${side}Bend`]] = channel.contact ? templeAngles() : [angle, bend];
+        [this.target[side], this.target[`${side}Bend`]] = channel.contact ? templeAngles(side) : [angle, bend];
       });
     }
     refresh('torso', shoulders, () => { this.target.torso = clamp(slope - this.baseline, -0.13, 0.13); });

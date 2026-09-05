@@ -1,12 +1,19 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, mkdtemp, copyFile, writeFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import assert from 'node:assert/strict';
 import copy from '../ui_copy.json' with { type: 'json' };
 import { preparePoseFixture, poseFixture } from './prepare-pose-fixture.mjs';
+import { sampleFlipperVertices, inspectConnectedSkin } from './rig-assertions.js';
+import { preset } from '../src/rig.js';
 
 await mkdir('test-results', { recursive: true });
+const output = await mkdtemp('test-results/browser-run-');
+// Keep immutable per-run evidence; the established root report is a latest
+// result index used by clean-build. Archive its previous contents first.
+try { await copyFile('test-results/browser-report.json', `${output}/previous-report.json`); }
+catch (error) { if (error.code !== 'ENOENT') throw error; }
 const poseImage = await preparePoseFixture();
 const requests = [], responses = [], failedRequests = [], serverRequests = [], errors = [], screenshots = [], checks = {};
 const base = '/psyduck-demo/';
@@ -33,6 +40,11 @@ async function load(init) {
   if (init) await p.addInitScript(init);
   await p.goto(url); await p.waitForFunction(() => window.renderReady, {}, { timeout: 30000 }); return p;
 }
+async function choosePreset(page, name) {
+  await page.locator(`[data-preset="${name}"]`).click();
+  await page.waitForFunction(({ expected, name }) => Object.keys(expected).every(key => key === 'nod'
+    || (name === 'bodySway' && key === 'torso') || Math.abs(window.psyduck.pose[key] - expected[key]) < 0.02), { expected: preset(name), name });
+}
 const synthetic = () => {
   window.cameraRequests = 0;
   navigator.mediaDevices.getUserMedia = async constraints => {
@@ -49,6 +61,7 @@ try {
   checks.browser = await browser.version();
   const page = await load(() => { navigator.mediaDevices.getUserMedia = () => { throw new Error('Unexpected camera request'); }; });
   checks.initialNoML = !requests.some(r => /vision|\.task|pose-worker/.test(r.url)); assert.ok(checks.initialNoML);
+  checks.connectedSkin = await page.evaluate(inspectConnectedSkin);
   checks.rig = await page.evaluate(() => {
     const root = window.psyduck.rig, meshes = []; root.traverse(o => { if (o.isSkinnedMesh) meshes.push(o); });
     let weighted = 0, vertices = 0, outlines = 0;
@@ -80,35 +93,32 @@ try {
       if (max < 0.08) throw new Error(`Bone not deforming: ${name} ${max}`);
       changed[name] = max; bone.rotation.z = old;
     }
+    root.updateMatrixWorld(true); meshes.forEach(m => m.skeleton.update());
     if (!outlines || !weighted) throw new Error('No outline or smooth weights');
     return { meshes: meshes.length, outlines, vertices, smoothWeightVertices: weighted, maxDisplacementByBone: changed };
   });
   const presetVertices = {};
   for (const name of ['idle', 'raiseOneArm', 'armsSpread', 'holdHead', 'headTilt', 'bodySway']) {
-    await page.locator(`[data-preset="${name}"]`).click(); await page.waitForTimeout(1000);
-    presetVertices[name] = await page.evaluate(() => {
-      const root = window.psyduck.rig, mesh = root.getObjectByName('rightFlipper');
-      const vertex = root.getObjectByName('rightArm').position.clone().fromBufferAttribute(mesh.geometry.attributes.position, 650);
-      mesh.applyBoneTransform(650, vertex); return vertex.toArray();
-    });
-    const path = `test-results/${name}.png`; await page.screenshot({ path }); screenshots.push(path);
+    await choosePreset(page, name);
+    presetVertices[name] = (await page.evaluate(sampleFlipperVertices))[1];
+    const path = `${output}/${name}.png`; await page.screenshot({ path }); screenshots.push(path);
   }
   checks.presetVertexDisplacement = Object.fromEntries(['raiseOneArm', 'armsSpread', 'holdHead'].map(name => [name, Math.hypot(...presetVertices[name].map((v, i) => v - presetVertices.idle[i]))]));
   assert.ok(Object.values(checks.presetVertexDisplacement).every(v => v > 0.3));
-  await page.locator('[data-preset="headTilt"]').click(); await page.waitForTimeout(700);
+  await choosePreset(page, 'headTilt');
   for (const view of ['side', 'quarter', 'back']) {
     await page.evaluate(v => window.psyduck.setView(v), view); await page.waitForTimeout(300);
-    const path = `test-results/headTilt-${view}.png`; await page.screenshot({ path }); screenshots.push(path);
+    const path = `${output}/headTilt-${view}.png`; await page.screenshot({ path }); screenshots.push(path);
   }
-  await page.locator('[data-preset="holdHead"]').click();
+  await choosePreset(page, 'holdHead');
   for (const view of ['side', 'quarter']) {
     await page.evaluate(v => window.psyduck.setView(v), view); await page.waitForTimeout(700);
-    const path = `test-results/holdHead-${view}.png`; await page.screenshot({ path }); screenshots.push(path);
+    const path = `${output}/holdHead-${view}.png`; await page.screenshot({ path }); screenshots.push(path);
   }
   await page.locator('#auto').click(); assert.equal(await page.locator('#auto').getAttribute('aria-pressed'), 'true');
   await page.locator('#auto').click(); checks.demo = true;
   await page.setViewportSize({ width: 390, height: 844 }); await page.evaluate(() => window.psyduck.setView('front'));
-  await page.screenshot({ path: 'test-results/mobile.png', fullPage: true }); screenshots.push('test-results/mobile.png');
+  await page.screenshot({ path: `${output}/mobile.png`, fullPage: true }); screenshots.push(`${output}/mobile.png`);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true); checks.mobileLoads = true; await page.close();
 
   const rigFailure = await context.newPage();
@@ -131,7 +141,7 @@ try {
   assert.equal(await rigFailure.locator('#auto').isDisabled(), true);
   assert.equal(await rigFailure.locator('#view').isDisabled(), true);
   assert.equal(await rigFailure.evaluate(() => Boolean(window.psyduck.rig)), false);
-  await rigFailure.screenshot({ path: 'test-results/rig-load-failed.png' }); screenshots.push('test-results/rig-load-failed.png');
+  await rigFailure.screenshot({ path: `${output}/rig-load-failed.png` }); screenshots.push(`${output}/rig-load-failed.png`);
   await rigFailure.unroute('**/models/psyduck_rigged.glb');
   await rigFailure.locator('#rig-retry').click();
   await rigFailure.waitForFunction(() => window.renderReady);
@@ -189,15 +199,7 @@ try {
       window.fixtureStream = canvas.captureStream(15); return window.fixtureStream;
     };
   });
-  const sampleVertices = () => {
-    const root = window.psyduck.rig;
-    return ['left', 'right'].map(side => {
-      const mesh = root.getObjectByName(`${side}Flipper`);
-      const vertex = root.getObjectByName(`${side}Arm`).position.clone().fromBufferAttribute(mesh.geometry.attributes.position, 650);
-      mesh.applyBoneTransform(650, vertex); return vertex.toArray();
-    });
-  };
-  const beforePositive = await positive.evaluate(sampleVertices);
+  const beforePositive = await positive.evaluate(sampleFlipperVertices);
   await positive.evaluate(() => {
     const consume = window.psyduck.controller.onResult;
     window.psyduck.controller.onResult = data => {
@@ -207,12 +209,12 @@ try {
   });
   await positive.locator('#start').click();
   await positive.waitForFunction(() => window.positiveMessage?.count === 33 && window.psyduck.pose.left > 1.0 && window.psyduck.pose.right > 1.0, {}, { timeout: 45000 });
-  const afterPositive = await positive.evaluate(sampleVertices);
+  const afterPositive = await positive.evaluate(sampleFlipperVertices);
   const delta = afterPositive.map((p, side) => p.map((v, i) => v - beforePositive[side][i]));
   assert.ok(delta.flat().every(Number.isFinite));
   assert.ok(delta[0][0] < -0.3 && delta[1][0] > 0.3 && delta.every(v => v[1] > 0.3), 'Public spread pose must lift both real flippers outward/upward');
   checks.positiveMediaPipe = { fixture: poseFixture, message: await positive.evaluate(() => window.positiveMessage), vertexDelta: delta, path: 'real CPU Worker -> CameraController -> app.onResult -> Retarget -> reloaded SkinnedMesh', cameraHardwareUsed: false };
-  await positive.screenshot({ path: 'test-results/positive-pose.png' }); screenshots.push('test-results/positive-pose.png');
+  await positive.screenshot({ path: `${output}/positive-pose.png` }); screenshots.push(`${output}/positive-pose.png`);
   await positive.locator('#stop').click();
   assert.equal(await positive.evaluate(() => window.fixtureStream.getTracks()[0].readyState), 'ended'); await positive.close();
 
@@ -242,7 +244,7 @@ try {
   await legacy.setViewportSize({ width: 800, height: 800 }); await legacy.goto(`${url}static.html`);
   await legacy.waitForFunction(() => window.renderReady && window.sceneStats, {}, { timeout: 120000 });
   checks.legacyStatic = await legacy.evaluate(() => window.sceneStats());
-  await legacy.screenshot({ path: 'test-results/static.png', timeout: 120000 }); screenshots.push('test-results/static.png'); await legacy.close();
+  await legacy.screenshot({ path: `${output}/static.png`, timeout: 120000 }); screenshots.push(`${output}/static.png`); await legacy.close();
 
   assert.equal(errors.length, 0, errors.join('\n'));
   assert.ok(requests.every(r => r.method === 'GET' && r.url.startsWith(origin)), 'Unexpected upload or external request');
@@ -251,6 +253,8 @@ try {
   checks.productionSubpath = true; checks.noUploadObserved = true;
   console.log(JSON.stringify(checks, null, 2));
 } finally {
-  await writeFile('test-results/browser-report.json', JSON.stringify({ checks, screenshots, errors, requests, responses, failedRequests, serverRequests }, null, 2));
+  const report = JSON.stringify({ output, checks, screenshots, errors, requests, responses, failedRequests, serverRequests }, null, 2);
+  await writeFile(`${output}/report.json`, report);
+  await writeFile('test-results/browser-report.json', report);
   await browser.close(); await new Promise(r => server.close(r));
 }

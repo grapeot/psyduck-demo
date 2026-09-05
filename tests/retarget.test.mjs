@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Retarget } from '../src/retarget.js';
-import { neutral, templeAngles } from '../src/rig.js';
+import { neutral, templeAngles, armBind, holdHeadTargets, preset } from '../src/rig.js';
 
 function person() {
   const p = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.9, visibility: 0, presence: 1 }));
@@ -52,6 +52,18 @@ test('single wrist/elbow occlusion does not invalidate other side', () => {
     assert.ok(r.output.right > 2.4); assert.ok(Math.abs(r.output.left - neutral().left) < 0.02);
   }
 });
+test('both contact sides match their own hold-head preset in mirror and plain mappings', () => {
+  for (const mirror of [true, false]) {
+    const p = person(), r = new Retarget();
+    p[15] = { ...p[15], x: 0.59, y: 0.24 };
+    p[16] = { ...p[16], x: 0.41, y: 0.24 };
+    run(r, p, 0, 3000, mirror);
+    const expected = preset('holdHead');
+    assert.ok(r.channels.left.contact && r.channels.right.contact);
+    for (const key of ['left', 'right', 'leftBend', 'rightBend']) assert.equal(r.target[key], expected[key]);
+    assert.notEqual(r.target.left, r.target.right);
+  }
+});
 test('loss holds briefly then returns idle; reentry is confirmed and smooth', () => {
   const p = person(), r = new Retarget(); p[13].y = 0.2; p[15].y = 0.02; run(r, p);
   const before = r.output.left; run(r, [], 2550, 2750); assert.ok(Math.abs(r.output.left - before) < 0.01);
@@ -91,10 +103,12 @@ test('shoulder-local arm directions are invariant to image-plane torso roll', ()
   assert.ok(Math.abs(a.output.right - b.output.right) < 1e-6);
 });
 test('temple IK preserves fixed link lengths, joint limits and head clearance', () => {
-  const [a, b] = templeAngles();
-  assert.ok(a > 0.12 && a < 2.9 && b >= 0 && b <= 1.1);
-  const x = 0.9 + 0.52 * Math.sin(a) + 0.56 * Math.sin(a + b);
-  const y = 1.7 - 0.52 * Math.cos(a) - 0.56 * Math.cos(a + b);
-  assert.ok(Math.abs(x - 0.8) < 1e-6 && Math.abs(y - 2.66) < 1e-6);
-  assert.ok(x * x + ((y - 2.22) / 0.73) ** 2 + ((0.4 - 0.05) / 0.71) ** 2 > 1.12);
+  for (const side of ['left', 'right']) {
+    const [a, b] = templeAngles(side), target = holdHeadTargets[side];
+    assert.ok(a > 0.12 && a < 2.9 && b >= 0 && b <= armBind.maxElbow);
+    const x = armBind.x + armBind.upper * Math.sin(a) + armBind.lower * Math.sin(a + b);
+    const y = armBind.y - armBind.upper * Math.cos(a) - armBind.lower * Math.cos(a + b);
+    assert.ok(Math.abs(x - target.x) < 1e-6 && Math.abs(y - target.y) < 1e-6);
+    assert.ok(x * x + ((y - 2.22) / 0.73) ** 2 + ((armBind.z - 0.05) / 0.71) ** 2 > 1.12);
+  }
 });

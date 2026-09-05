@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="UTF-8"></head><body><script type="module">
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
-import {buildRig} from './src/rig.js';
+import {buildRig} from './scripts/build-rig.js';
 window.generate = async () => {
   const source = await new GLTFLoader().loadAsync('./psyduck_neutral.glb');
   const rig = buildRig(source.scene);
