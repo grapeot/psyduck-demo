@@ -46,6 +46,7 @@
     "insecureContext": "请通过 HTTPS 或 localhost 打开页面后使用摄像头",
     "browserUnsupported": "当前浏览器不支持姿态捕捉功能",
     "modelLoadFailed": "模型加载失败，预设演示仍可使用",
+    "rigLoadFailed": "角色模型加载失败，请重试",
     "resourceTimeout": "资源加载超时，请重试",
     "cameraInterrupted": "摄像头连接中断"
   },

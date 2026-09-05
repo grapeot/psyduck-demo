@@ -3,14 +3,18 @@ import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import assert from 'node:assert/strict';
+import copy from '../ui_copy.json' with { type: 'json' };
+import { preparePoseFixture, poseFixture } from './prepare-pose-fixture.mjs';
 
 await mkdir('test-results', { recursive: true });
+const poseImage = await preparePoseFixture();
 const requests = [], responses = [], failedRequests = [], serverRequests = [], errors = [], screenshots = [], checks = {};
 const base = '/psyduck-demo/';
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.glb': 'model/gltf-binary', '.task': 'application/octet-stream' };
 const server = createServer(async (req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
   serverRequests.push({ method: req.method, path: pathname });
+  if (pathname === `${base}__fixtures__/pose.jpg`) { res.writeHead(200, { 'Content-Type': 'image/jpeg' }); res.end(poseImage); return; }
   if (!pathname.startsWith(base) || pathname.includes('..')) { res.writeHead(404).end(); return; }
   const path = resolve('dist', pathname.slice(base.length) || 'index.html');
   try { const bytes = await readFile(path); res.writeHead(200, { 'Content-Type': types[extname(path)] || 'application/octet-stream' }); res.end(bytes); }
@@ -107,10 +111,44 @@ try {
   await page.screenshot({ path: 'test-results/mobile.png', fullPage: true }); screenshots.push('test-results/mobile.png');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true); checks.mobileLoads = true; await page.close();
 
+  const rigFailure = await context.newPage();
+  await rigFailure.addInitScript(() => {
+    window.cameraRequests = 0;
+    navigator.mediaDevices.getUserMedia = async () => { window.cameraRequests++; throw new Error('Camera must remain off'); };
+  });
+  let releaseRig;
+  await rigFailure.route('**/models/psyduck_rigged.glb', async route => {
+    await new Promise(resolve => { releaseRig = resolve; }); await route.abort();
+  });
+  await rigFailure.goto(url);
+  assert.equal(await rigFailure.locator('#start').isDisabled(), true);
+  assert.equal(await rigFailure.locator('[data-preset]:enabled').count(), 0);
+  for (let i = 0; i < 100 && !releaseRig; i++) await rigFailure.waitForTimeout(50);
+  assert.ok(releaseRig); releaseRig();
+  await rigFailure.waitForFunction(message => document.getElementById('status').textContent === message, copy.errors.rigLoadFailed);
+  assert.equal(await rigFailure.locator('#start').isDisabled(), true);
+  assert.equal(await rigFailure.locator('[data-preset]:enabled').count(), 0);
+  assert.equal(await rigFailure.locator('#auto').isDisabled(), true);
+  assert.equal(await rigFailure.locator('#view').isDisabled(), true);
+  assert.equal(await rigFailure.evaluate(() => Boolean(window.psyduck.rig)), false);
+  await rigFailure.screenshot({ path: 'test-results/rig-load-failed.png' }); screenshots.push('test-results/rig-load-failed.png');
+  await rigFailure.unroute('**/models/psyduck_rigged.glb');
+  await rigFailure.locator('#rig-retry').click();
+  await rigFailure.waitForFunction(() => window.renderReady);
+  assert.equal(await rigFailure.locator('#start').isEnabled(), true);
+  assert.equal(await rigFailure.locator('[data-preset]:enabled').count(), 6);
+  assert.equal(await rigFailure.locator('#auto').isEnabled(), true);
+  assert.equal(await rigFailure.locator('#status').textContent(), copy.status.cameraOff);
+  assert.equal(await rigFailure.evaluate(() => window.cameraRequests), 0);
+  await rigFailure.locator('[data-preset="armsSpread"]').click();
+  await rigFailure.waitForFunction(() => window.psyduck.pose.left > 1.4);
+  checks.rigLoadFailureRetry = { loadingControlsDisabled: true, failureControlsDisabled: true, recovered: true, cameraRequests: 0 };
+  await rigFailure.close();
+
   const denied = await load(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('mock denial', 'NotAllowedError'); }; });
   await denied.locator('#start').focus(); await denied.keyboard.press('Enter'); await denied.waitForFunction(() => document.getElementById('status').textContent.includes('未获准'));
-  await denied.locator('[data-preset="armsSpread"]').click(); await denied.waitForTimeout(700);
-  assert.ok(await denied.evaluate(() => window.psyduck.pose.left > 1.4)); checks.permissionDeniedDemo = true; await denied.close();
+  await denied.locator('[data-preset="armsSpread"]').click();
+  await denied.waitForFunction(() => window.psyduck.pose.left > 1.4); checks.permissionDeniedDemo = true; await denied.close();
 
   const late = await load(() => {
     navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { window.resolvePermission = resolve; });
@@ -140,12 +178,52 @@ try {
   assert.ok(cameraBefore.some((v, i) => Math.abs(v - orbitAfter[i]) > 0.1)); checks.demoOrbitEnabled = true;
   await smoke.close();
 
+  const positive = await load(() => {
+    window.cameraRequests = 0;
+    navigator.mediaDevices.getUserMedia = async constraints => {
+      window.cameraRequests++; window.constraints = constraints;
+      const image = new Image(); image.src = './__fixtures__/pose.jpg'; await image.decode();
+      const canvas = document.createElement('canvas'); canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+      const ctx = canvas.getContext('2d'); const draw = () => ctx.drawImage(image, 0, 0);
+      draw(); window.fixtureTimer = setInterval(draw, 65);
+      window.fixtureStream = canvas.captureStream(15); return window.fixtureStream;
+    };
+  });
+  const sampleVertices = () => {
+    const root = window.psyduck.rig;
+    return ['left', 'right'].map(side => {
+      const mesh = root.getObjectByName(`${side}Flipper`);
+      const vertex = root.getObjectByName(`${side}Arm`).position.clone().fromBufferAttribute(mesh.geometry.attributes.position, 650);
+      mesh.applyBoneTransform(650, vertex); return vertex.toArray();
+    });
+  };
+  const beforePositive = await positive.evaluate(sampleVertices);
+  await positive.evaluate(() => {
+    const consume = window.psyduck.controller.onResult;
+    window.psyduck.controller.onResult = data => {
+      if (data.landmarks.length) window.positiveMessage = { id: data.id, timestamp: data.timestamp, width: data.width, height: data.height, count: data.landmarks.length };
+      consume(data);
+    };
+  });
+  await positive.locator('#start').click();
+  await positive.waitForFunction(() => window.positiveMessage?.count === 33 && window.psyduck.pose.left > 1.0 && window.psyduck.pose.right > 1.0, {}, { timeout: 45000 });
+  const afterPositive = await positive.evaluate(sampleVertices);
+  const delta = afterPositive.map((p, side) => p.map((v, i) => v - beforePositive[side][i]));
+  assert.ok(delta.flat().every(Number.isFinite));
+  assert.ok(delta[0][0] < -0.3 && delta[1][0] > 0.3 && delta.every(v => v[1] > 0.3), 'Public spread pose must lift both real flippers outward/upward');
+  checks.positiveMediaPipe = { fixture: poseFixture, message: await positive.evaluate(() => window.positiveMessage), vertexDelta: delta, path: 'real CPU Worker -> CameraController -> app.onResult -> Retarget -> reloaded SkinnedMesh', cameraHardwareUsed: false };
+  await positive.screenshot({ path: 'test-results/positive-pose.png' }); screenshots.push('test-results/positive-pose.png');
+  await positive.locator('#stop').click();
+  assert.equal(await positive.evaluate(() => window.fixtureStream.getTracks()[0].readyState), 'ended'); await positive.close();
+
   const failure = await load(synthetic);
   await failure.route('**/models/pose_landmarker_lite.task', route => route.abort());
   await failure.locator('#start').click();
-  await failure.waitForFunction(() => document.getElementById('status').textContent.includes('模型加载失败'), {}, { timeout: 40000 });
+  await failure.waitForFunction(message => document.getElementById('status').textContent === message, copy.errors.modelLoadFailed, { timeout: 40000 });
   assert.equal(await failure.evaluate(() => window.syntheticStream.getTracks()[0].readyState), 'ended');
-  await failure.locator('[data-preset="headTilt"]').click(); checks.workerFailureCleanup = true; await failure.close();
+  await failure.locator('[data-preset="headTilt"]').click();
+  await failure.waitForFunction(() => window.psyduck.pose.head > 0.2);
+  checks.workerFailureCleanup = true; checks.poseTaskFailureDemo = true; await failure.close();
 
   const cancelled = await load(synthetic);
   let releaseModel;

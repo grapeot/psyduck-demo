@@ -14,8 +14,8 @@ $('app').innerHTML = `<main class="page">
   <section class="stage"><canvas id="scene" aria-label="${c.app.title}"></canvas><div class="stage-note">${c.status.upperBodyOnly}</div></section>
   <aside class="panel">
     <section><div id="status" class="status" role="status" aria-live="polite"></div><p id="hint" class="hint"></p><div class="progress"><span id="progress"></span></div></section>
-    <div class="actions"><button id="start" class="primary">${c.actions.startFollowing}</button><button id="stop" hidden>${c.actions.cancel}</button><button id="calibrate" disabled>${c.actions.recalibrate}</button></div>
-    <section><div id="presets">${Object.entries(c.presets).map(([id, label]) => `<button data-preset="${id}" aria-pressed="${id === 'idle'}">${label}</button>`).join('')}</div><div class="actions" style="margin-top:8px"><button id="auto" aria-pressed="false">${c.actions.autoDemo}</button><button id="view">${c.actions.viewModel}</button></div></section>
+    <div class="actions"><button id="start" class="primary" disabled>${c.actions.startFollowing}</button><button id="rig-retry" hidden>${c.actions.retry}</button><button id="stop" hidden>${c.actions.cancel}</button><button id="calibrate" disabled>${c.actions.recalibrate}</button></div>
+    <section><div id="presets">${Object.entries(c.presets).map(([id, label]) => `<button data-preset="${id}" disabled aria-pressed="${id === 'idle'}">${label}</button>`).join('')}</div><div class="actions" style="margin-top:8px"><button id="auto" disabled aria-pressed="false">${c.actions.autoDemo}</button><button id="view" disabled>${c.actions.viewModel}</button></div></section>
     <section><label><input id="mirror" type="checkbox" checked>${c.actions.mirrorTracking}</label><div class="actions"><button id="preview-toggle" aria-pressed="true">${c.actions.hidePreview}</button><button id="skeleton-toggle" aria-pressed="false">${c.actions.showSkeleton}</button></div><p id="camera-note" class="fine"></p></section>
     <div id="preview" class="preview mirrored"><video id="video" muted playsinline></video><canvas id="landmarks" width="640" height="480"></canvas><div id="preview-label" class="preview-label"></div></div>
     <details><summary>${c.metrics.debugDisplay}</summary><p class="metric" id="metrics"></p><p>${c.app.scopeNotice}</p></details>
@@ -46,7 +46,11 @@ for (const r of [2.5, 2.7]) {
 let rig, pose = neutral(), desired = neutral(), selected = 'idle', auto = false, active = false, initializing = false, showPreview = true, showSkeleton = false;
 let lastPoints = [], poseCount = 0, renderCount = 0, metricTime = performance.now(), lastFrame = metricTime;
 const retarget = new Retarget();
-function status(name) { $('status').textContent = c.status[name] || c.errors[name] || name; }
+let rigState = 'loading';
+function status(name) {
+  if (!rig) name = rigState === 'failed' ? 'rigLoadFailed' : 'loadingResources';
+  $('status').textContent = c.status[name] || c.errors[name] || name;
+}
 function cameraNotice() {
   $('preview').hidden = !showPreview || !active;
   $('camera-note').textContent = active && !showPreview ? c.status.previewHiddenCameraActive : active ? c.privacy.cameraOnlyNoMic : c.status.cameraOff;
@@ -76,6 +80,7 @@ const controller = new CameraController({ video: $('video'), assets,
 });
 status('cameraOff'); cameraNotice();
 $('start').onclick = () => {
+  if (!rig) return;
   if (!isSecureContext) { status('insecureContext'); return; }
   if (!navigator.mediaDevices?.getUserMedia || !globalThis.Worker || !globalThis.createImageBitmap) { status('browserUnsupported'); return; }
   retarget.reset(); auto = false; updateAuto(); front(); controller.start();
@@ -134,10 +139,19 @@ renderer.setAnimationLoop(now => {
   }
   window.renderReady = Boolean(rig);
 });
-try {
-  rig = (await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/psyduck_rigged.glb`)).scene;
-  addOutlines(rig); scene.add(rig);
-} catch (e) { status('modelLoadFailed'); console.error(e); }
+async function loadRig() {
+  rigState = 'loading'; $('rig-retry').hidden = true; status('loadingResources');
+  try {
+    const loaded = (await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/psyduck_rigged.glb`)).scene;
+    addOutlines(loaded); scene.add(loaded); rig = loaded; rigState = 'ready';
+    document.querySelectorAll('[data-preset], #auto, #view, #start').forEach(b => { b.disabled = false; });
+    status('cameraOff');
+  } catch (error) {
+    rigState = 'failed'; $('rig-retry').hidden = false; status('rigLoadFailed'); console.error(error);
+  }
+}
+$('rig-retry').onclick = () => { if (rigState === 'failed') loadRig(); };
+await loadRig();
 // Inspection surface contains no camera frames or recorded data.
 window.psyduck = { get rig() { return rig; }, get pose() { return pose; }, controller, retarget,
   setView(name) { const positions = { front: [0, 2.9, 10.7], side: [10.7, 2.9, 0], back: [0, 2.9, -10.7], quarter: [6, 3.3, 9] }; camera.position.set(...positions[name]); controls.update(); },

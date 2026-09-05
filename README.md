@@ -19,7 +19,7 @@ npm run prepare:assets
 npm start
 ```
 
-资源准备会下载约 5.8 MB 的固定模型，并复制约 19 MB 的 WASM 运行时到 `public/`；这些可下载资源不纳入 Git。摄像头需要 localhost 或 HTTPS 和用户授权。
+资源准备会下载约 5.8 MB 的固定模型，并复制约 19 MB 的 WASM 运行时到 `public/`；这些可下载资源不纳入 Git。`npm run build` 会自动准备并校验资源，干净源树只需 `npm ci` 和 `npm run build` 即可构建；摘要校验通过的模型缓存不会重复下载，缺失或损坏时重新获取，校验失败则构建失败。摄像头需要 localhost 或 HTTPS 和用户授权。
 
 仓库保留 `public/models/psyduck_rigged.glb`。需要重新生成时运行 `npm run generate:rig`，它使用源 `psyduck_neutral.glb`，需要本机 Chrome。
 
@@ -30,12 +30,13 @@ npm test
 npm run build
 npm run test:browser
 npm run test:dev
+npm run test:clean-build
 npm audit
 ```
 
-浏览器测试使用本机 Chrome（Playwright `channel: chrome`）。`test:browser` 需要先构建，再用普通静态服务器实际挂载 `/psyduck-demo/` 子路径。
+浏览器测试使用本机 Chrome（Playwright `channel: chrome`）。`test:browser` 需要先构建，再用普通静态服务器实际挂载 `/psyduck-demo/` 子路径。`test:clean-build` 在只复制 Git 候选源文件的新目录执行安装、构建和浏览器验证，不复用被忽略的资源缓存。
 
-已运行实际 CPU Worker 空画面推理，以及模拟摄像头、权限、取消和资源释放测试。没有开启真人相机；真人跟随准确性、体感延迟、Safari 和手机摄像头尚未验收。
+浏览器测试覆盖实际 CPU Worker 空画面与公开姿态样例图推理，以及模拟摄像头、权限、取消、角色加载重试和资源释放。公开样例图首次测试时按固定摘要下载到被 Git 忽略的 `test-results/`，不进入生产包；来源见 `tests/prepare-pose-fixture.mjs`。没有开启真人相机；真人跟随准确性、体感延迟、Safari 和手机摄像头尚未验收。
 
 ## 范围与保留内容
 

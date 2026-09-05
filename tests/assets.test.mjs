@@ -1,0 +1,34 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, writeFile, readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { prepareAssets } from '../scripts/prepare-assets.mjs';
+
+test('resource preparation validates caches, repairs corrupt bytes and never rewrites trust manifest', async () => {
+  await mkdir('test-results', { recursive: true });
+  const root = await mkdtemp(resolve('test-results/assets-unit-'));
+  const model = Buffer.from('unit-test-model'), wasm = Buffer.from('unit-test-wasm');
+  const entry = data => ({ bytes: data.length, sha256: createHash('sha256').update(data).digest('hex') });
+  const manifest = JSON.stringify({ version: 'test', model: { url: 'https://example.invalid/model', ...entry(model) }, runtime: [{ file: 'test.wasm', ...entry(wasm) }] });
+  await mkdir(resolve(root, 'node_modules/@mediapipe/tasks-vision/wasm'), { recursive: true });
+  await writeFile(resolve(root, 'asset-manifest.json'), manifest);
+  await writeFile(resolve(root, 'node_modules/@mediapipe/tasks-vision/package.json'), JSON.stringify({ version: 'test' }));
+  const source = resolve(root, 'node_modules/@mediapipe/tasks-vision/wasm/test.wasm'); await writeFile(source, wasm);
+  let downloads = 0;
+  const download = async () => { downloads++; return new Response(model); };
+  assert.equal((await prepareAssets(root, download)).modelCached, false);
+  assert.equal(downloads, 1);
+  assert.equal((await prepareAssets(root, () => { throw new Error('Unexpected network'); })).modelCached, true);
+  const cachedModel = resolve(root, 'public/models/pose_landmarker_lite.task');
+  const cachedWasm = resolve(root, 'public/vision/test.wasm');
+  await writeFile(cachedModel, 'corrupt'); await writeFile(cachedWasm, 'corrupt');
+  await prepareAssets(root, download); assert.equal(downloads, 2);
+  assert.deepEqual(await readFile(cachedWasm), wasm);
+  await writeFile(cachedModel, 'corrupt');
+  await assert.rejects(prepareAssets(root, async () => new Response('bad-download')), /Pinned model/);
+  await assert.rejects(prepareAssets(root, async () => { throw new Error('offline'); }), /offline/);
+  await writeFile(source, 'corrupt-package');
+  await assert.rejects(prepareAssets(root, download), /Pinned WASM/);
+  assert.equal(await readFile(resolve(root, 'asset-manifest.json'), 'utf8'), manifest);
+});
