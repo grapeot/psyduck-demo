@@ -1,0 +1,69 @@
+{
+  "app": {
+    "title": "可达鸭动作跟随",
+    "description": "通过摄像头捕捉上半身动作驱动可达鸭，也可使用预设动作或自动演示。",
+    "scopeNotice": "首版仅支持上半身主要动作跟随，暂不支持全身动作、快速转身、手指与表情捕捉。"
+  },
+  "actions": {
+    "startFollowing": "开始跟随",
+    "stopFollowing": "停止跟随",
+    "cancel": "取消",
+    "recalibrate": "重新校准",
+    "retry": "重试",
+    "autoDemo": "自动演示",
+    "pauseDemo": "暂停演示",
+    "viewModel": "查看模型",
+    "showPreview": "显示预览",
+    "hidePreview": "隐藏预览",
+    "showSkeleton": "显示骨架",
+    "hideSkeleton": "隐藏骨架",
+    "mirrorTracking": "镜像跟随"
+  },
+  "presets": {
+    "idle": "待机",
+    "raiseOneArm": "单侧抬手",
+    "armsSpread": "双臂张开",
+    "holdHead": "抱头",
+    "headTilt": "歪头",
+    "bodySway": "身体摆动"
+  },
+  "status": {
+    "cameraOff": "摄像头未开启",
+    "loadingResources": "正在加载资源",
+    "requestingPermission": "请求摄像头权限中",
+    "calibrating": "校准中",
+    "following": "跟随中",
+    "upperBodyOnly": "仅捕捉上半身",
+    "personNotFound": "未检测到人物",
+    "stopped": "已停止",
+    "compatibilityMode": "兼容模式",
+    "previewHiddenCameraActive": "预览已隐藏，摄像头仍在工作"
+  },
+  "errors": {
+    "permissionDenied": "摄像头权限未获准",
+    "noCamera": "未检测到可用摄像头",
+    "deviceBusy": "摄像头暂不可用，可能被占用或设备异常",
+    "insecureContext": "请通过 HTTPS 或 localhost 打开页面后使用摄像头",
+    "browserUnsupported": "当前浏览器不支持姿态捕捉功能",
+    "modelLoadFailed": "模型加载失败，预设演示仍可使用",
+    "resourceTimeout": "资源加载超时，请重试",
+    "cameraInterrupted": "摄像头连接中断"
+  },
+  "hints": {
+    "upperBodyInFrame": "请确保双肩和双腕处于画面中",
+    "faceCameraHold": "请正对镜头并短暂保持姿态",
+    "returnToFrame": "请回到画面，等待姿态重新识别"
+  },
+  "privacy": {
+    "cameraOnlyNoMic": "只使用摄像头，不申请麦克风权限",
+    "localProcessingOnly": "画面与姿态关键点仅在设备本地处理",
+    "noUploadNoRecord": "数据不上传，默认不录制",
+    "firstTimeResourceDownload": "初次使用需下载模型资源",
+    "staticNetworkOnly": "仅浏览器普通网页与静态资源有网络请求"
+  },
+  "metrics": {
+    "renderFps": "渲染帧率",
+    "poseUpdateRate": "姿态更新率",
+    "debugDisplay": "状态与调试显示"
+  }
+}

@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="UTF-8"></head><body><script type="module">
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
+import {buildRig} from './src/rig.js';
+window.generate = async () => {
+  const source = await new GLTFLoader().loadAsync('./psyduck_neutral.glb');
+  const rig = buildRig(source.scene);
+  const buffer = await new GLTFExporter().parseAsync(rig, {binary: true});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buffer])); a.download = 'psyduck_rigged.glb'; a.click();
+};
+</script></body></html>
