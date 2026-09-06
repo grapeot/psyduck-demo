@@ -22,4 +22,4 @@ try {
   await page.waitForFunction(() => window.psyduck.controller.session?.lastTimestamp > 0 || !document.getElementById('start').hidden, {}, { timeout: 45000 });
   const state = await page.evaluate(() => ({ status: document.getElementById('status').textContent, timestamp: window.psyduck.controller.session?.lastTimestamp }));
   console.log(state); assert.ok(state.timestamp > 0); await page.locator('#stop').click();
-} finally { await browser.close(); await server.close(); }
+} finally { await browser.close(); server.httpServer?.closeAllConnections?.(); await server.close(); }
