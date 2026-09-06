@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { motionModel, armBind, flipperShape, clamp } from '../src/rig.js';
+import { motionModel, armBind, flipperShape, flipperCurveAt, clamp } from '../src/rig.js';
 
 const smooth = THREE.MathUtils.smoothstep;
 const union = (a, b, k) => Math.min(a, b) - Math.max(k - Math.abs(a - b), 0) ** 2 / (4 * k);
@@ -32,13 +32,13 @@ function flipperField(x, y, z) {
   const radius = THREE.MathUtils.lerp(flipperShape.rootRadius, flipperShape.tipRadius, t) + flipperShape.fullness * Math.sin(Math.PI * t);
   // One gently curved blade authored in rest space. Its curvature moves as a
   // whole with the shoulder; no actuator or weight boundary bends its middle.
-  const curve = flipperShape.bow * Math.sin(Math.PI * t) + flipperShape.tipCurve * t ** 3;
+  const curve = flipperCurveAt(t);
   return Math.hypot(x - dx * along + dy * curve, y - dy * along - dx * curve, (z - armBind.z) / flipperShape.depthScale) - radius;
 }
 
 export function buildRig(source) {
   const root = new THREE.Group(); root.name = 'PsyduckRig';
-  root.userData = { motionModel, rigVersion: 1, bind: armBind, ignoredCaptureLandmarks: [13, 14] };
+  root.userData = { motionModel, rigVersion: 1, bind: armBind, shape: flipperShape, ignoredCaptureLandmarks: [13, 14] };
   const bones = [];
   function bone(name, parent, position) {
     const b = new THREE.Bone(); b.name = name; b.position.set(...position); parent.add(b); bones.push(b); return b;

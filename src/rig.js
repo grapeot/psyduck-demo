@@ -3,8 +3,9 @@ import * as THREE from 'three';
 export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 export const motionModel = 'shoulder_flap';
 export const rigBoneNames = Object.freeze(['root', 'torso', 'head', 'leftArm', 'rightArm']);
-export const armBind = Object.freeze({ x: 0.82, y: 1.66, z: 0.59, length: 1.04, restAngle: Math.PI / 2, minAngle: 0.12, maxAngle: 2.99, rigidBlendStart: 0.34, rigidFrom: 0.48 });
-export const flipperShape = Object.freeze({ rootRadius: 0.24, tipRadius: 0.06, fullness: 0.035, bow: -0.14, tipCurve: 0.12, depthScale: 0.50 });
+export const armBind = Object.freeze({ x: 0.82, y: 1.66, z: 0.68, length: 1.04, restAngle: Math.PI / 2, minAngle: 0.12, maxAngle: 2.99, rigidBlendStart: 0.34, rigidFrom: 0.55 });
+export const flipperShape = Object.freeze({ rootRadius: 0.24, tipRadius: 0.06, fullness: 0.035, bow: -0.035, tipCurve: 0, depthScale: 0.50 });
+export const flipperCurveAt = t => flipperShape.bow * Math.sin(Math.PI * t) + flipperShape.tipCurve * t ** 3;
 export const holdAngles = Object.freeze({ left: 2.99, right: 2.94 });
 export const neutral = () => ({ left: 0.22, right: 0.22, head: 0, nod: 0, torso: 0 });
 // Character faces +Z, screen right is +X. Open T-pose bind rotations are
@@ -38,7 +39,8 @@ export function validateRig(root) {
   const metadata=root.getObjectByName('PsyduckRig')?.userData;
   if (metadata?.motionModel !== motionModel || metadata.rigVersion !== 1
     || names.length !== rigBoneNames.length || rigBoneNames.some(name=>!names.includes(name))
-    || ['x','y','z','length','restAngle','rigidBlendStart','rigidFrom'].some(key=>metadata.bind?.[key]!==armBind[key])) {
+    || ['x','y','z','length','restAngle','rigidBlendStart','rigidFrom'].some(key=>metadata.bind?.[key]!==armBind[key])
+    || Object.keys(flipperShape).some(key=>metadata.shape?.[key]!==flipperShape[key])) {
     throw new Error('Expected shoulder_flap v1 asset with exactly five bones; regenerate the rig');
   }
 }
