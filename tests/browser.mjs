@@ -79,7 +79,7 @@ try {
       vertices += w.count;
     }
     const changed = {};
-    for (const name of ['head', 'torso', 'leftArm', 'rightArm', 'leftElbow', 'rightElbow']) {
+    for (const name of ['head', 'torso', 'leftArm', 'rightArm']) {
       const bone = root.getObjectByName(name), old = bone.rotation.z, before = [];
       root.updateMatrixWorld(true); meshes.forEach(m => m.skeleton.update());
       for (const m of meshes.filter(m => !m.userData.outline)) {

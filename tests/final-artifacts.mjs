@@ -1,6 +1,8 @@
 import {chromium} from 'playwright';
 import {mkdir,readFile,copyFile,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import {motionModel} from '../src/rig.js';
+if(motionModel==='shoulder_flap')throw new Error('R3 artifact collector is historical. Use tests/flap-study.mjs final for current evidence.');
 const output='test-results/pose-reference-round3';
 await mkdir(output,{recursive:true});
 const run=JSON.parse(await readFile('test-results/browser-report.json','utf8'));

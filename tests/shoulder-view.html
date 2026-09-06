@@ -1,7 +1,7 @@
 <!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;background:linear-gradient(#dfe6ce,#94bdb1)}canvas{display:block}</style></head><body><script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { addOutlines, applyPose, preset } from '../src/rig.js';
+import { addOutlines, applyPose, preset, validateRig } from '../src/rig.js';
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(700, 700); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -14,6 +14,7 @@ light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left:
 const ground = new THREE.Mesh(new THREE.CircleGeometry(2.3,80),new THREE.MeshStandardMaterial({color:'#c4d0ad',roughness:1}));
 ground.rotation.x=-Math.PI/2;ground.position.y=.004;ground.receiveShadow=true;scene.add(ground);
 const root = (await new GLTFLoader().loadAsync('/models/psyduck_rigged.glb')).scene;
+validateRig(root);
 addOutlines(root);scene.add(root);window.inspectionRoot = root;
 const poses = {
   idle: preset('idle'), armsSpread: preset('armsSpread'), raiseOneArm: preset('raiseOneArm'), holdHead: preset('holdHead'),

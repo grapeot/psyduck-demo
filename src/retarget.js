@@ -1,4 +1,4 @@
-import { neutral, clamp, templeAngles } from './rig.js';
+import { neutral, clamp, holdAngles, armBind } from './rig.js';
 
 const good = p => p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z ?? 0)
   && Number.isFinite(p.visibility ?? 1) && Number.isFinite(p.presence ?? 1) && (p.visibility ?? 1) >= 0.55 && (p.presence ?? 1) >= 0.55;
@@ -28,8 +28,8 @@ export class Retarget {
     const imageSlope = shoulders ? Math.atan2(a.y - b.y, Math.abs(a.x - b.x)) : 0;
     const slope = imageSlope * (mirror ? 1 : -1);
     const allValid = shoulders && nose && [11, 12].every(i => {
-      const s = point(i), e = point(i + 2), w = point(i + 4);
-      return s && e && w && Math.hypot(e.x - s.x, e.y - s.y) >= 0.005 && Math.hypot(w.x - e.x, w.y - e.y) >= 0.005;
+      const s = point(i), w = point(i + 4);
+      return s && w && Math.hypot(w.x - s.x, w.y - s.y) >= 0.005;
     });
     if (!this.calibrated) {
       if (allValid && contiguous) { this.validMs += dt; this.baselineSum += slope * dt; }
@@ -48,31 +48,27 @@ export class Retarget {
         channel.since = null; channel.dwell = 0;
         if (time - channel.last > 450) {
           this.target[key] = neutral()[key];
-          if (key === 'left' || key === 'right') { this.target[`${key}Bend`] = 0; channel.contact = false; }
+          if (key === 'left' || key === 'right') channel.contact = false;
           if (key === 'head') this.target.nod = 0;
         }
       }
     };
-    for (const [s, e, w] of [[11, 13, 15], [12, 14, 16]]) {
-      const side = sideContract[mirror ? 'mirror' : 'plain'][s], elbow = point(e), wrist = point(w), shoulder = point(s);
+    // The shoulder_flap model deliberately ignores detector elbow landmarks.
+    for (const [s, w] of [[11, 15], [12, 16]]) {
+      const side = sideContract[mirror ? 'mirror' : 'plain'][s], wrist = point(w), shoulder = point(s);
       const outward = s === 11 ? 1 : -1;
-      const validLimb = shoulders && shoulder && elbow && wrist
-        && Math.hypot(elbow.x - shoulder.x, elbow.y - shoulder.y) >= 0.005
-        && Math.hypot(wrist.x - elbow.x, wrist.y - elbow.y) >= 0.005;
+      const validLimb = shoulders && shoulder && wrist
+        && Math.hypot(wrist.x - shoulder.x, wrist.y - shoulder.y) >= 0.005;
       refresh(side, validLimb, channel => {
-        const vx = elbow.x - shoulder.x, vy = elbow.y - shoulder.y;
+        const vx = wrist.x - shoulder.x, vy = wrist.y - shoulder.y;
         const dx = (Math.cos(imageSlope) * vx + Math.sin(imageSlope) * vy) * outward;
         const dy = -Math.sin(imageSlope) * vx + Math.cos(imageSlope) * vy;
-        const length = Math.hypot(vx, vy);
-        const forearm = Math.hypot(wrist.x - elbow.x, wrist.y - elbow.y);
         const distance = nose ? Math.hypot(wrist.x - nose.x, wrist.y - nose.y) / shoulderWidth : Infinity;
         const switching = channel.contact ? distance > 0.85 : distance < 0.58;
         channel.dwell = switching ? channel.dwell + dt : 0;
         if (channel.dwell >= (channel.contact ? 260 : 300)) { channel.contact = !channel.contact; channel.dwell = 0; }
-        const angle = clamp(Math.atan2(Math.max(0, dx), dy), 0.12, 2.85);
-        const dot = (vx * (wrist.x - elbow.x) + vy * (wrist.y - elbow.y)) / (length * forearm);
-        const bend = clamp(Math.acos(clamp(dot, -1, 1)) * 0.35, 0, 0.65);
-        [this.target[side], this.target[`${side}Bend`]] = channel.contact ? templeAngles(side) : [angle, bend];
+        const angle = clamp(Math.atan2(Math.max(0, dx), dy), armBind.minAngle, armBind.maxAngle);
+        this.target[side] = channel.contact ? holdAngles[side] : angle;
       });
     }
     refresh('torso', shoulders, () => { this.target.torso = clamp(slope - this.baseline, -0.13, 0.13); });

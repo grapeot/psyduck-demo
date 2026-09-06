@@ -1,6 +1,8 @@
 import { chromium } from 'playwright';
 import { createServer } from 'vite';
 import { mkdir, copyFile, readFile, writeFile } from 'node:fs/promises';
+import {motionModel} from '../src/rig.js';
+if(motionModel==='shoulder_flap')throw new Error('Historical shoulder-before/after directories are frozen. Use tests/flap-study.mjs.');
 const label=process.argv[2]||'after';
 if(!/^(before|after|iteration[0-9]+)$/.test(label)) throw new Error('Expected before, after or iterationN');
 const output=`test-results/shoulder-${label}`;

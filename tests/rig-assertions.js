@@ -5,14 +5,14 @@ export function sampleFlipperVertices(root = window.psyduck.rig) {
     let sample, farthest = -Infinity;
     root.traverse(mesh => {
       if (!mesh.isSkinnedMesh || mesh.userData.outline) return;
-      const arm = mesh.skeleton.bones.findIndex(b => b.name === `${side}Arm`), elbow = mesh.skeleton.bones.findIndex(b => b.name === `${side}Elbow`);
-      if (arm < 0 || elbow < 0) return;
+      const arm = mesh.skeleton.bones.findIndex(b => b.name === `${side}Arm`);
+      if (arm < 0) return;
       const origin = mesh.skeleton.boneInverses[arm].clone().invert().elements;
       const { position, skinIndex, skinWeight } = mesh.geometry.attributes;
       for (let i = 0; i < position.count; i++) {
         let w = 0;
-        for (let slot = 0; slot < 4; slot++) if (skinIndex.array[i * 4 + slot] === elbow) w += skinWeight.array[i * 4 + slot];
-        if (w < 0.9) continue;
+        for (let slot = 0; slot < 4; slot++) if (skinIndex.array[i * 4 + slot] === arm) w += skinWeight.array[i * 4 + slot];
+        if (w < 0.9999) continue;
         const distance = (position.getX(i) - origin[12]) ** 2 + (position.getY(i) - origin[13]) ** 2 + (position.getZ(i) - origin[14]) ** 2;
         if (distance > farthest) { farthest = distance; sample = { mesh, i }; }
       }
@@ -26,6 +26,9 @@ export function sampleFlipperVertices(root = window.psyduck.rig) {
 export function inspectConnectedSkin(root = window.psyduck.rig) {
   const mesh = root.getObjectByName('PsyduckSurface');
   if (!mesh?.isSkinnedMesh || !mesh.geometry.index) throw new Error('Body and both flippers must share an indexed SkinnedMesh');
+  const expected=['root','torso','head','leftArm','rightArm'];
+  const boneNames=mesh.skeleton.bones.map(b=>b.name);
+  if(root.getObjectByName('PsyduckRig')?.userData.motionModel!=='shoulder_flap'||boneNames.length!==5||expected.some(n=>!boneNames.includes(n)))throw new Error('Not the five-bone shoulder_flap asset');
   const { position, skinIndex, skinWeight } = mesh.geometry.attributes, index = mesh.geometry.index.array;
   const parent = Array.from({ length: position.count }, (_, i) => i), used = new Set(), edges = new Map();
   const find = a => { while (a !== parent[a]) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
@@ -45,7 +48,7 @@ export function inspectConnectedSkin(root = window.psyduck.rig) {
     const w = {};
     for (let j = 0; j < 4; j++) { const name = joints[skinIndex.array[i * 4 + j]]; w[name] = (w[name] || 0) + skinWeight.array[i * 4 + j]; }
     for (const side of ['left', 'right']) {
-      if (w[`${side}Elbow`] > 0.9) sidePresent[side] = true;
+      if (w[`${side}Arm`] > 0.9999) sidePresent[side] = true;
       if (w.torso > 0.05 && w[`${side}Arm`] > 0.05) mixed[side]++;
       if (w.head > 0.01 && w[`${side}Arm`] > 0.01) headArmMixed[side]++;
     }
@@ -55,7 +58,7 @@ export function inspectConnectedSkin(root = window.psyduck.rig) {
   const separate = [];
   root.traverse(o => { if (o.isSkinnedMesh && !o.userData.outline && /Flipper/.test(o.name)) separate.push(o.name); });
   if (separate.length) throw new Error('Separate flipper surfaces retained');
-  return { components, boundaryEdges, nonmanifoldEdges, vertices: position.count, triangles: index.length / 3, edges: edges.size, eulerCharacteristic: used.size - edges.size + index.length / 3, mixed, headArmMixed };
+  return { motionModel:'shoulder_flap',boneNames,components, boundaryEdges, nonmanifoldEdges, vertices: position.count, triangles: index.length / 3, edges: edges.size, eulerCharacteristic: used.size - edges.size + index.length / 3, mixed, headArmMixed };
 }
 
 export function inspectShoulderSections(root = window.psyduck.rig) {
@@ -68,7 +71,7 @@ export function inspectShoulderSections(root = window.psyduck.rig) {
   for (const side of ['left', 'right']) {
     const weight = Array.from({ length: p.count }, (_, i) => {
       let w = 0;
-      for (let j = 0; j < 4; j++) if ([`${side}Arm`, `${side}Elbow`].includes(joints[g.attributes.skinIndex.array[i * 4 + j]])) w += g.attributes.skinWeight.array[i * 4 + j];
+      for (let j = 0; j < 4; j++) if (joints[g.attributes.skinIndex.array[i * 4 + j]]===`${side}Arm`) w += g.attributes.skinWeight.array[i * 4 + j];
       return w;
     });
     const nodes = new Map(), links = new Map(), areaVector = [0, 0, 0]; let maxEdge = 0, maxStretch = 0;

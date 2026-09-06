@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;background:white}canvas{display:block}</style></head><body><script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {motionModel,armBind,flipperShape,preset,neutral,applyPose,addOutlines,validateRig} from '../src/rig.js';
+import {inspectConnectedSkin,inspectShoulderSections,sampleFlipperVertices} from './rig-assertions.js';
+import {sculptHeadMetric,headRestMatrix} from './pose-reference-checks.js';
+const root=(await new GLTFLoader().loadAsync('/models/psyduck_rigged.glb')).scene;validateRig(root);addOutlines(root);
+const scene=new THREE.Scene();scene.add(root);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setSize(1000,1000);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight('#fff5dd','#8c9d80',2.3));
+const light=new THREE.DirectionalLight('#fff3d7',2.2);light.position.set(-3,7,5);light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-4,right:4,top:5,bottom:-4,near:.1,far:20});light.shadow.normalBias=.015;scene.add(light);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.ShadowMaterial({color:'#74806b',opacity:.12}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const camera=new THREE.PerspectiveCamera(32,1,.1,80),target=[0,1.65,0];
+const views={front:[0,2.9,10.7],rightQuarter:[6,3.3,9],leftQuarter:[-6,3.3,9],rightSide:[10.7,2.9,0],leftSide:[-10.7,2.9,0],back:[0,2.9,-10.7]};
+const poses={idle:preset('idle'),holdHead:preset('holdHead'),raiseOneArm:preset('raiseOneArm'),armsSpread:preset('armsSpread'),headTilt:preset('headTilt'),bodySway:preset('bodySway',.6),holdTilt:{...preset('holdHead'),head:.24,torso:.12}};
+window.flapSetup={motionModel,armBind,flipperShape,poses,views,camera:{fov:32,aspect:1,target},topology:inspectConnectedSkin(root)};
+window.flapRender=(poseOrName,view)=>{
+  const pose=typeof poseOrName==='string'?poses[poseOrName]:poseOrName;applyPose(root,pose);camera.position.set(...views[view]);camera.lookAt(...target);camera.updateMatrixWorld(true);
+  const mesh=root.getObjectByName('PsyduckSurface'),g=mesh.geometry,p=new THREE.Vector3(),toHead=headRestMatrix(mesh),names=mesh.skeleton.bones.map(b=>b.name);
+  const pixel=v=>{const q=v.clone().project(camera);return[(q.x+1)*500,(1-q.y)*500];};
+  let minX=Infinity,maxX=-Infinity;const safety={left:[],right:[]};
+  for(let i=0;i<g.attributes.position.count;i++){
+    const weights={};for(let k=0;k<4;k++){const name=names[g.attributes.skinIndex.array[i*4+k]];weights[name]=(weights[name]||0)+g.attributes.skinWeight.array[i*4+k];}
+    p.fromBufferAttribute(g.attributes.position,i);mesh.applyBoneTransform(i,p);
+    if(weights.head>=.95){const [x]=pixel(p);minX=Math.min(minX,x);maxX=Math.max(maxX,x);}
+    for(const side of ['left','right'])if(weights[`${side}Arm`]>=.9999){const q=p.clone().applyMatrix4(toHead);safety[side].push(sculptHeadMetric(q.x,q.y,q.z));}
+  }
+  renderer.render(scene,camera);
+  return{pose,view,headAlignment:{center:pixel(new THREE.Vector3(0,2.22,.05)),width:maxX-minX},tips:sampleFlipperVertices(root),sections:inspectShoulderSections(root),safety:Object.fromEntries(Object.entries(safety).map(([side,v])=>[side,{samples:v.length,minHead:Math.min(...v),inside:v.filter(x=>x<1).length}]))};
+};
+window.flapRender('idle','front');window.renderReady=true;
+</script></body></html>

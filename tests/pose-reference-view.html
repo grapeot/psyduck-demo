@@ -1,5 +1,7 @@
 <!doctype html><html><head><meta charset="UTF-8"><style>body{margin:0;background:white}canvas{display:block}</style></head><body><script type="module">
 import * as THREE from 'three';
+import {motionModel} from '../src/rig.js';
+if(motionModel==='shoulder_flap')throw new Error('Historical articulated viewer cannot analyze this rig. Open tests/flap-view.html instead.');
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { inspectConnectedSkin, inspectShoulderSections } from './rig-assertions.js';
 import { sculptHeadMetric, headRestMatrix } from './pose-reference-checks.js';

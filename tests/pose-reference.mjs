@@ -4,6 +4,8 @@ import { mkdir,copyFile,readFile,writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
+import {motionModel} from '../src/rig.js';
+if(motionModel==='shoulder_flap')throw new Error('Historical articulated-rig tool: saved R1/R2/R3 evidence is read-only. Use tests/flap-study.mjs for the current motion model.');
 
 const stage=process.argv[2];
 if(!['baseline','round1','round2','round3'].includes(stage))throw new Error('Expected baseline or round1..3; no round4');

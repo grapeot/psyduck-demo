@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { armBind, applyPose, preset, addOutlines } from '../src/rig.js';
+import { armBind, applyPose, preset, addOutlines, validateRig } from '../src/rig.js';
 import { inspectConnectedSkin, inspectShoulderSections } from './rig-assertions.js';
 
 test('reloaded yellow shell is closed/connected, has real shoulder cross sections and blended weights through extreme poses', async () => {
   const bytes = await readFile('public/models/psyduck_rigged.glb');
   const root = (await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '')).scene;
   root.updateMatrixWorld(true);
+  validateRig(root);
   const topology = inspectConnectedSkin(root), shell = root.getObjectByName('PsyduckSurface');
   shell.skeleton.update();
   const v = shell.position.clone(); let restError = 0;
@@ -31,14 +32,14 @@ test('reloaded yellow shell is closed/connected, has real shoulder cross section
     bind: { ...preset('idle'), left: armBind.restAngle, right: armBind.restAngle },
     idle: preset('idle'), armsSpread: preset('armsSpread'), raiseOneArm: preset('raiseOneArm'), holdHead: preset('holdHead'),
     headTiltRaise: {...preset('raiseOneArm'), head:.24}, swayRaise: {...preset('raiseOneArm'),head:-.18,torso:-.12},
-    holdTilt: {...preset('holdHead'),head:.24,torso:.12}, extreme: {...preset('idle'),left:2.9,right:2.9,leftBend:armBind.maxElbow,rightBend:armBind.maxElbow,head:.25,nod:.12,torso:.13},
-    lowExtreme: {...preset('idle'),left:.12,right:.12,leftBend:armBind.maxElbow,rightBend:armBind.maxElbow,head:-.25,nod:-.12,torso:-.13},
-    asymmetricExtreme: {...preset('idle'),left:.12,right:2.9,rightBend:armBind.maxElbow,head:-.25,nod:.12,torso:.13}
+    holdTilt: {...preset('holdHead'),head:.24,torso:.12}, extreme: {...preset('idle'),left:armBind.maxAngle,right:armBind.maxAngle,head:.25,nod:.12,torso:.13},
+    lowExtreme: {...preset('idle'),left:armBind.minAngle,right:armBind.minAngle,head:-.25,nod:-.12,torso:-.13},
+    asymmetricExtreme: {...preset('idle'),left:armBind.minAngle,right:armBind.maxAngle,head:-.25,nod:.12,torso:.13}
   };
   const sections = {};
   for (const [name, pose] of Object.entries(poses)) {
     applyPose(root, pose); sections[name] = inspectShoulderSections(root);
-    for (const side of ['left','right']) assert.ok(Math.abs(root.getObjectByName(`${side}Elbow`).position.length() - armBind.upper) < 1e-6);
+    for (const side of ['left','right']) assert.deepEqual(root.getObjectByName(`${side}Arm`).scale.toArray(),[1,1,1]);
   }
   await mkdir('test-results', { recursive: true });
   const all = Object.values(sections).flatMap(s => Object.values(s));

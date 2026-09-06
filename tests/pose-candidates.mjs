@@ -1,7 +1,8 @@
 import {readFile,writeFile,mkdir,mkdtemp} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {armBind,applyPose,neutral} from '../src/rig.js';
+import {motionModel,armBind,applyPose,neutral} from '../src/rig.js';
+if(motionModel==='shoulder_flap')throw new Error('Historical two-link IK probe is not applicable to shoulder_flap. No current asset was inspected.');
 import {sculptHeadMetric} from './pose-reference-checks.js';
 const bytes=await readFile('public/models/psyduck_rigged.glb');
 const root=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;

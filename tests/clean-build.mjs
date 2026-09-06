@@ -7,7 +7,9 @@ import { prepareAssets } from '../scripts/prepare-assets.mjs';
 
 // Read-only Git inventory includes the current candidate source edits, but
 // never copies ignored caches, node_modules, test photos, or the parent repo.
-const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+const inventory = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+const deleted = new Set(execFileSync('git', ['ls-files', '-z', '--deleted'], { encoding: 'utf8' }).split('\0').filter(Boolean));
+const files = inventory.filter(file => !deleted.has(file));
 assert.ok(files.includes('asset-manifest.json') && files.includes('tests/browser.mjs'));
 for (const file of files) assert.ok(!/^(node_modules|dist|test-results|public\/vision|src\/generated)\/|^public\/models\/pose_landmarker_lite\.task$|\.jpg$/.test(file) && !file.startsWith('/') && !file.split('/').includes('..'), `Unexpected clean source: ${file}`);
 await mkdir('test-results', { recursive: true });

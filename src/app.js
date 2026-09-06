@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import copy from '../ui_copy.json';
-import { addOutlines, applyPose, neutral, preset } from './rig.js';
+import { addOutlines, applyPose, neutral, preset, validateRig } from './rig.js';
 import { Retarget } from './retarget.js';
 import { CameraController } from './camera.js';
 import './style.css';
@@ -117,7 +117,7 @@ function drawPoints() {
   const w = $('landmarks').width, h = $('landmarks').height; context.clearRect(0, 0, w, h);
   if (!showSkeleton || !showPreview) return;
   context.strokeStyle = '#ffe8a3'; context.fillStyle = '#f9f4dc'; context.lineWidth = 3;
-  for (const [a, b] of [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16]]) {
+  for (const [a, b] of [[11, 12], [11, 15], [12, 16]]) {
     const p = lastPoints[a], q = lastPoints[b];
     if (!p || !q || p.visibility < 0.55 || q.visibility < 0.55) continue;
     context.beginPath(); context.moveTo(p.x * w, p.y * h); context.lineTo(q.x * w, q.y * h); context.stroke();
@@ -143,7 +143,7 @@ async function loadRig() {
   rigState = 'loading'; $('rig-retry').hidden = true; status('loadingResources');
   try {
     const loaded = (await new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/psyduck_rigged.glb`)).scene;
-    addOutlines(loaded); scene.add(loaded); rig = loaded; rigState = 'ready';
+    validateRig(loaded); addOutlines(loaded); scene.add(loaded); rig = loaded; rigState = 'ready';
     document.querySelectorAll('[data-preset], #auto, #view, #start').forEach(b => { b.disabled = false; });
     status('cameraOff');
   } catch (error) {
