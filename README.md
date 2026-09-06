@@ -55,4 +55,6 @@ npm audit
 
 旧设计中的两连杆动作方案已被用户指定的 `shoulder_flap` 替代；当前运动契约以本页、`src/rig.js` 和导出资产的 motionModel 元数据为准。
 
-代码、MediaPipe 库及模型、宝可梦角色权益分别处理。第三方参考图和私人测试视频不随代码提交。公开发布前需核对相关授权；本项目不授予宝可梦角色版权许可，源码许可证尚未指定。
+Original project code is released under the [MIT License](LICENSE), copyright 2026 Yan Wang. Bundled third-party components and their exact licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+This repository is an unofficial fan and technical reference implementation. It is not affiliated with, endorsed by, or sponsored by Nintendo, The Pokémon Company, Game Freak, or their affiliates. Pokémon, Psyduck, and related character rights belong to their respective owners. The MIT license covers original project code only and grants no rights to third-party characters, names, trademarks, artwork, models, or other third-party material.

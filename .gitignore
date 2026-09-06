@@ -2,6 +2,7 @@ node_modules/
 dist/
 test-results/
 public/vision/
+public/legal/
 src/generated/
 public/models/pose_landmarker_lite.task
 iterations/

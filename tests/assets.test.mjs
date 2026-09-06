@@ -13,6 +13,10 @@ test('resource preparation validates caches, repairs corrupt bytes and never rew
   const manifest = JSON.stringify({ version: 'test', model: { url: 'https://example.invalid/model', ...entry(model) }, runtime: [{ file: 'test.wasm', ...entry(wasm) }] });
   await mkdir(resolve(root, 'node_modules/@mediapipe/tasks-vision/wasm'), { recursive: true });
   await writeFile(resolve(root, 'asset-manifest.json'), manifest);
+  await mkdir(resolve(root, 'licenses'), { recursive: true });
+  await writeFile(resolve(root, 'LICENSE'), 'MIT test license');
+  await writeFile(resolve(root, 'THIRD_PARTY_NOTICES.md'), 'Test notices');
+  await writeFile(resolve(root, 'licenses/Apache-2.0.txt'), 'Apache test license');
   await writeFile(resolve(root, 'node_modules/@mediapipe/tasks-vision/package.json'), JSON.stringify({ version: 'test' }));
   const source = resolve(root, 'node_modules/@mediapipe/tasks-vision/wasm/test.wasm'); await writeFile(source, wasm);
   let downloads = 0;
@@ -25,6 +29,9 @@ test('resource preparation validates caches, repairs corrupt bytes and never rew
   await writeFile(cachedModel, 'corrupt'); await writeFile(cachedWasm, 'corrupt');
   await prepareAssets(root, download); assert.equal(downloads, 2);
   assert.deepEqual(await readFile(cachedWasm), wasm);
+  assert.equal(await readFile(resolve(root, 'public/legal/MIT.txt'), 'utf8'), 'MIT test license');
+  assert.equal(await readFile(resolve(root, 'public/legal/THIRD_PARTY_NOTICES.md'), 'utf8'), 'Test notices');
+  assert.equal(await readFile(resolve(root, 'public/legal/Apache-2.0.txt'), 'utf8'), 'Apache test license');
   await writeFile(cachedModel, 'corrupt');
   await assert.rejects(prepareAssets(root, async () => new Response('bad-download')), /Pinned model/);
   await assert.rejects(prepareAssets(root, async () => { throw new Error('offline'); }), /offline/);

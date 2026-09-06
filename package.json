@@ -1,6 +1,7 @@
 {
   "name": "psyduck-threejs",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "start": "vite --host 127.0.0.1",

@@ -29,8 +29,8 @@
     }
   ],
   "licensing": {
-    "runtime": "Apache-2.0; see node_modules/@mediapipe/tasks-vision/README.md and upstream LICENSE",
-    "model": "MediaPipe published Pose Landmarker Lite model; https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker#models ; upstream MediaPipe Apache-2.0. Review model redistribution terms before public release.",
+    "runtime": "Apache-2.0; see THIRD_PARTY_NOTICES.md and licenses/Apache-2.0.txt",
+    "model": "Apache-2.0 per the official BlazePose GHUM 3D model card; see THIRD_PARTY_NOTICES.md and licenses/Apache-2.0.txt",
     "character": "Pokemon/Psyduck character rights are separate; no character-rights license is granted by this project.",
     "references": "Historical third-party reference images are excluded from commit and production assets."
   }

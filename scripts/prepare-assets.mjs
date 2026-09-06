@@ -14,6 +14,14 @@ export async function prepareAssets(root = process.cwd(), download = fetch) {
   };
   await mkdir(resolve(root, 'public/vision'), { recursive: true });
   await mkdir(resolve(root, 'public/models'), { recursive: true });
+  await mkdir(resolve(root, 'public/legal'), { recursive: true });
+  for (const [source, destination] of [
+    ['LICENSE', 'MIT.txt'],
+    ['THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md'],
+    ['licenses/Apache-2.0.txt', 'Apache-2.0.txt'],
+  ]) {
+    await writeFile(resolve(root, 'public/legal', destination), await readFile(resolve(root, source)));
+  }
   for (const entry of manifest.runtime) {
     const source = await readFile(resolve(packageRoot, 'wasm', entry.file));
     if (!valid(source, entry)) throw new Error(`Pinned WASM package hash mismatch: ${entry.file}`);

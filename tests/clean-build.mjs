@@ -36,6 +36,9 @@ try {
     report.assets.push({ path, verified: true });
   }
   await access(resolve(root, 'dist/models/psyduck_rigged.glb'));
+  for (const path of ['legal/MIT.txt', 'legal/THIRD_PARTY_NOTICES.md', 'legal/Apache-2.0.txt']) {
+    await access(resolve(root, 'dist', path));
+  }
   report.cacheVerifiedWithoutNetwork = (await prepareAssets(root, () => { throw new Error('Valid model cache must not fetch'); })).modelCached;
   assert.ok(report.cacheVerifiedWithoutNetwork);
   run(['test']);
