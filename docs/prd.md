@@ -4,7 +4,7 @@
 
 ## Goals
 
-The project demonstrates an interactive 3D character in a static website. Users can run procedural presets without permissions and may explicitly start local upper-body pose tracking. The implementation keeps camera processing in the browser, makes the rig contract inspectable, and remains deployable under the GitHub Pages `/psyduck-demo/` base path.
+The project demonstrates an interactive 3D character in a static website. Users can run procedural presets without permissions and may explicitly start local upper-body pose tracking. The implementation keeps camera processing in the browser, makes the rig contract inspectable, provides an English-default interface with a Chinese option, and remains deployable under the GitHub Pages `/psyduck-demo/` base path.
 
 ## Non-Goals
 

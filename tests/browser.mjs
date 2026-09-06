@@ -3,10 +3,12 @@ import { createServer } from 'node:http';
 import { readFile, mkdir, mkdtemp, copyFile, writeFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import assert from 'node:assert/strict';
-import copy from '../ui_copy.json' with { type: 'json' };
+import messages from '../ui_copy.json' with { type: 'json' };
 import { preparePoseFixture, poseFixture } from './prepare-pose-fixture.mjs';
 import { sampleFlipperVertices, inspectConnectedSkin } from './rig-assertions.js';
 import { preset } from '../src/rig.js';
+
+const copy = messages.en;
 
 await mkdir('test-results', { recursive: true });
 const output = await mkdtemp('test-results/browser-run-');
@@ -60,12 +62,35 @@ const synthetic = () => {
 try {
   checks.browser = await browser.version();
   const page = await load(() => { navigator.mediaDevices.getUserMedia = () => { throw new Error('Unexpected camera request'); }; });
+  checks.i18nDefault = await page.evaluate(() => ({ language: window.psyduck.language, htmlLang: document.documentElement.lang, title: document.title, stored: localStorage.getItem('psyduck-language') }));
+  assert.deepEqual(checks.i18nDefault, { language: 'en', htmlLang: 'en', title: messages.en.app.title, stored: null });
+  await page.locator('#language').selectOption('zh-CN');
+  checks.i18nChinese = await page.evaluate(() => ({
+    language: window.psyduck.language,
+    htmlLang: document.documentElement.lang,
+    title: document.title,
+    status: document.getElementById('status').textContent,
+    scene: document.getElementById('scene').getAttribute('aria-label'),
+    source: document.getElementById('source-link').getAttribute('aria-label'),
+    preset: document.querySelector('[data-preset="armsSpread"]').textContent,
+    stored: localStorage.getItem('psyduck-language'),
+  }));
+  assert.deepEqual(checks.i18nChinese, {
+    language: 'zh-CN', htmlLang: 'zh-CN', title: messages['zh-CN'].app.title,
+    status: messages['zh-CN'].status.cameraOff, scene: messages['zh-CN'].app.sceneAriaLabel,
+    source: messages['zh-CN'].app.githubLinkAriaLabel, preset: messages['zh-CN'].presets.armsSpread, stored: 'zh-CN',
+  });
+  await page.screenshot({ path: `${output}/language-zh.png`, fullPage: true }); screenshots.push(`${output}/language-zh.png`);
+  await page.reload(); await page.waitForFunction(() => window.renderReady);
+  assert.equal(await page.evaluate(() => window.psyduck.language), 'zh-CN');
+  await page.locator('#language').selectOption('en');
+  assert.equal(await page.locator('#status').textContent(), messages.en.status.cameraOff);
   checks.sourceLink = await page.locator('#source-link').evaluate(link => ({ href: link.href, target: link.target, title: link.title, ariaLabel: link.getAttribute('aria-label') }));
   assert.deepEqual(checks.sourceLink, {
     href: 'https://github.com/grapeot/psyduck-demo',
     target: '_blank',
-    title: 'View repository source on GitHub',
-    ariaLabel: 'View repository source on GitHub',
+    title: messages.en.app.githubLinkTitle,
+    ariaLabel: messages.en.app.githubLinkAriaLabel,
   });
   checks.initialNoML = !requests.some(r => /vision|\.task|pose-worker/.test(r.url)); assert.ok(checks.initialNoML);
   checks.connectedSkin = await page.evaluate(inspectConnectedSkin);
@@ -163,7 +188,8 @@ try {
   await rigFailure.close();
 
   const denied = await load(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('mock denial', 'NotAllowedError'); }; });
-  await denied.locator('#start').focus(); await denied.keyboard.press('Enter'); await denied.waitForFunction(() => document.getElementById('status').textContent.includes('未获准'));
+  await denied.locator('#start').focus(); await denied.keyboard.press('Enter');
+  await denied.waitForFunction(message => document.getElementById('status').textContent === message, copy.errors.permissionDenied);
   await denied.locator('[data-preset="armsSpread"]').click();
   await denied.waitForFunction(() => window.psyduck.pose.left > 1.4); checks.permissionDeniedDemo = true; await denied.close();
 
@@ -182,6 +208,14 @@ try {
   console.log('Real MediaPipe smoke:', checks.realMediaPipe);
   assert.ok(checks.realMediaPipe.timestamp > 0, 'Actual Worker inference did not complete');
   assert.equal(checks.realMediaPipe.audio, false); assert.equal(checks.realMediaPipe.isolated, false); assert.ok(checks.realMediaPipe.worker && checks.realMediaPipe.cameraLocked);
+  await smoke.locator('#language').selectOption('zh-CN');
+  checks.i18nActive = await smoke.evaluate(() => ({ status: document.getElementById('status').textContent, hint: document.getElementById('hint').textContent, stop: document.getElementById('stop').textContent, note: document.getElementById('camera-note').textContent, metrics: document.getElementById('metrics').textContent }));
+  assert.equal(checks.i18nActive.status, messages['zh-CN'].status.personNotFound);
+  assert.equal(checks.i18nActive.hint, messages['zh-CN'].hints.returnToFrame);
+  assert.equal(checks.i18nActive.stop, messages['zh-CN'].actions.stopFollowing);
+  assert.equal(checks.i18nActive.note, messages['zh-CN'].privacy.cameraOnlyNoMic);
+  assert.match(checks.i18nActive.metrics, new RegExp(messages['zh-CN'].metrics.renderFps));
+  await smoke.locator('#language').selectOption('en');
   const cameraBefore = await smoke.evaluate(() => window.psyduck.cameraPosition);
   await smoke.mouse.move(400, 420); await smoke.mouse.down(); await smoke.mouse.move(250, 420, { steps: 8 }); await smoke.mouse.up();
   const cameraAfter = await smoke.evaluate(() => window.psyduck.cameraPosition);

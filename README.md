@@ -7,7 +7,7 @@ A browser-based 3D reference implementation for preset character animation and o
 
 ## Capabilities
 
-The page provides idle, raise-one-arm, arms-spread, hold-head, head-tilt, and body-sway presets plus an automatic demo. Presets work without camera access.
+The page provides idle, raise-one-arm, arms-spread, hold-head, head-tilt, and body-sway presets plus an automatic demo. Presets work without camera access. The interface defaults to English and includes a persistent Chinese language option.
 
 Optional camera tracking maps shoulder-to-wrist direction, head tilt, and torso lean onto a reloadable GLB. The `shoulder_flap` rig has exactly five bones: `root`, `torso`, `head`, `leftArm`, and `rightArm`. Each shoulder drives one whole flipper; there are no elbow bones or two-link arm IK.
 

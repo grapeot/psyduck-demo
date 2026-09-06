@@ -25,3 +25,4 @@ The Three.js scene, six presets, auto demo, reloadable five-bone GLB, local Medi
 - Added English project, product, architecture, and agent documentation.
 - Replaced the legacy modeling-only skill with one end-to-end character motion reference and a single router.
 - Recorded the five-bone whole-flipper contract, local CPU Worker boundary, release hygiene, and reproducible validation expectations.
+- Added an English-default interface with a persistent Chinese option and localized visible state, hint, error, and accessibility text.

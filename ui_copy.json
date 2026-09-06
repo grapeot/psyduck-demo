@@ -1,70 +1,154 @@
 {
-  "app": {
-    "title": "可达鸭动作跟随",
-    "description": "通过摄像头捕捉上半身动作驱动可达鸭，也可使用预设动作或自动演示。",
-    "scopeNotice": "首版仅支持上半身主要动作跟随，暂不支持全身动作、快速转身、手指与表情捕捉。"
+  "en": {
+    "app": {
+      "title": "Psyduck Motion Mirror",
+      "description": "Mirror upper-body motion with your camera, or use a preset or the auto demo.",
+      "scopeNotice": "This version tracks major upper-body motion only. It does not capture full-body motion, fast turns, fingers, or facial expressions.",
+      "sceneAriaLabel": "Interactive 3D Psyduck scene",
+      "languageSelectorLabel": "Language",
+      "languageEn": "English",
+      "languageZh": "中文",
+      "githubLinkTitle": "View repository source on GitHub",
+      "githubLinkAriaLabel": "View repository source on GitHub"
+    },
+    "actions": {
+      "startFollowing": "Start Tracking",
+      "stopFollowing": "Stop Tracking",
+      "cancel": "Cancel",
+      "recalibrate": "Recalibrate",
+      "retry": "Retry",
+      "autoDemo": "Auto Demo",
+      "pauseDemo": "Pause Demo",
+      "viewModel": "View Model",
+      "showPreview": "Show Preview",
+      "hidePreview": "Hide Preview",
+      "showSkeleton": "Show Skeleton",
+      "hideSkeleton": "Hide Skeleton",
+      "mirrorTracking": "Mirror Tracking"
+    },
+    "presets": {
+      "idle": "Idle",
+      "raiseOneArm": "Raise One Arm",
+      "armsSpread": "Arms Spread",
+      "holdHead": "Hold Head",
+      "headTilt": "Head Tilt",
+      "bodySway": "Body Sway"
+    },
+    "status": {
+      "cameraOff": "Camera Off",
+      "loadingResources": "Loading Resources",
+      "requestingPermission": "Requesting Camera Permission",
+      "calibrating": "Calibrating",
+      "following": "Tracking",
+      "upperBodyOnly": "Upper Body Only",
+      "personNotFound": "No Person Detected",
+      "stopped": "Stopped",
+      "compatibilityMode": "Compatibility Mode",
+      "previewHiddenCameraActive": "Preview hidden; camera remains active"
+    },
+    "errors": {
+      "permissionDenied": "Camera permission was not granted",
+      "noCamera": "No available camera was found",
+      "deviceBusy": "The camera is unavailable or in use by another application",
+      "insecureContext": "Open this page over HTTPS or localhost to use the camera",
+      "browserUnsupported": "This browser does not support pose tracking",
+      "modelLoadFailed": "Pose model failed to load; presets remain available",
+      "rigLoadFailed": "Character model failed to load; please retry",
+      "resourceTimeout": "Resource loading timed out; please retry",
+      "cameraInterrupted": "Camera connection was interrupted"
+    },
+    "hints": {
+      "upperBodyInFrame": "Keep both shoulders and wrists in frame",
+      "faceCameraHold": "Face the camera and hold briefly",
+      "returnToFrame": "Return to the frame and wait for tracking"
+    },
+    "privacy": {
+      "cameraOnlyNoMic": "Uses the camera only; microphone permission is not requested",
+      "localProcessingOnly": "Frames and pose landmarks are processed on this device",
+      "noUploadNoRecord": "Data is not uploaded and is not recorded by default",
+      "firstTimeResourceDownload": "First use downloads pose-model resources",
+      "staticNetworkOnly": "Network requests are limited to the page and static resources"
+    },
+    "metrics": {
+      "renderFps": "Render FPS",
+      "poseUpdateRate": "Pose Update Rate",
+      "debugDisplay": "Status and Debug Details"
+    }
   },
-  "actions": {
-    "startFollowing": "开始跟随",
-    "stopFollowing": "停止跟随",
-    "cancel": "取消",
-    "recalibrate": "重新校准",
-    "retry": "重试",
-    "autoDemo": "自动演示",
-    "pauseDemo": "暂停演示",
-    "viewModel": "查看模型",
-    "showPreview": "显示预览",
-    "hidePreview": "隐藏预览",
-    "showSkeleton": "显示骨架",
-    "hideSkeleton": "隐藏骨架",
-    "mirrorTracking": "镜像跟随"
-  },
-  "presets": {
-    "idle": "待机",
-    "raiseOneArm": "单侧抬手",
-    "armsSpread": "双臂张开",
-    "holdHead": "抱头",
-    "headTilt": "歪头",
-    "bodySway": "身体摆动"
-  },
-  "status": {
-    "cameraOff": "摄像头未开启",
-    "loadingResources": "正在加载资源",
-    "requestingPermission": "请求摄像头权限中",
-    "calibrating": "校准中",
-    "following": "跟随中",
-    "upperBodyOnly": "仅捕捉上半身",
-    "personNotFound": "未检测到人物",
-    "stopped": "已停止",
-    "compatibilityMode": "兼容模式",
-    "previewHiddenCameraActive": "预览已隐藏，摄像头仍在工作"
-  },
-  "errors": {
-    "permissionDenied": "摄像头权限未获准",
-    "noCamera": "未检测到可用摄像头",
-    "deviceBusy": "摄像头暂不可用，可能被占用或设备异常",
-    "insecureContext": "请通过 HTTPS 或 localhost 打开页面后使用摄像头",
-    "browserUnsupported": "当前浏览器不支持姿态捕捉功能",
-    "modelLoadFailed": "模型加载失败，预设演示仍可使用",
-    "rigLoadFailed": "角色模型加载失败，请重试",
-    "resourceTimeout": "资源加载超时，请重试",
-    "cameraInterrupted": "摄像头连接中断"
-  },
-  "hints": {
-    "upperBodyInFrame": "请确保双肩和双腕处于画面中",
-    "faceCameraHold": "请正对镜头并短暂保持姿态",
-    "returnToFrame": "请回到画面，等待姿态重新识别"
-  },
-  "privacy": {
-    "cameraOnlyNoMic": "只使用摄像头，不申请麦克风权限",
-    "localProcessingOnly": "画面与姿态关键点仅在设备本地处理",
-    "noUploadNoRecord": "数据不上传，默认不录制",
-    "firstTimeResourceDownload": "初次使用需下载模型资源",
-    "staticNetworkOnly": "仅浏览器普通网页与静态资源有网络请求"
-  },
-  "metrics": {
-    "renderFps": "渲染帧率",
-    "poseUpdateRate": "姿态更新率",
-    "debugDisplay": "状态与调试显示"
+  "zh-CN": {
+    "app": {
+      "title": "可达鸭动作跟随",
+      "description": "通过摄像头捕捉上半身动作驱动可达鸭，也可使用预设动作或自动演示。",
+      "scopeNotice": "首版仅支持上半身主要动作跟随，暂不支持全身动作、快速转身、手指与表情捕捉。",
+      "sceneAriaLabel": "可达鸭 3D 交互场景",
+      "languageSelectorLabel": "语言",
+      "languageEn": "English",
+      "languageZh": "中文",
+      "githubLinkTitle": "在 GitHub 上查看源码",
+      "githubLinkAriaLabel": "在 GitHub 上查看源码"
+    },
+    "actions": {
+      "startFollowing": "开始跟随",
+      "stopFollowing": "停止跟随",
+      "cancel": "取消",
+      "recalibrate": "重新校准",
+      "retry": "重试",
+      "autoDemo": "自动演示",
+      "pauseDemo": "暂停演示",
+      "viewModel": "查看模型",
+      "showPreview": "显示预览",
+      "hidePreview": "隐藏预览",
+      "showSkeleton": "显示骨架",
+      "hideSkeleton": "隐藏骨架",
+      "mirrorTracking": "镜像跟随"
+    },
+    "presets": {
+      "idle": "待机",
+      "raiseOneArm": "单侧抬手",
+      "armsSpread": "双臂张开",
+      "holdHead": "抱头",
+      "headTilt": "歪头",
+      "bodySway": "身体摆动"
+    },
+    "status": {
+      "cameraOff": "摄像头未开启",
+      "loadingResources": "正在加载资源",
+      "requestingPermission": "请求摄像头权限中",
+      "calibrating": "校准中",
+      "following": "跟随中",
+      "upperBodyOnly": "仅捕捉上半身",
+      "personNotFound": "未检测到人物",
+      "stopped": "已停止",
+      "compatibilityMode": "兼容模式",
+      "previewHiddenCameraActive": "预览已隐藏，摄像头仍在工作"
+    },
+    "errors": {
+      "permissionDenied": "摄像头权限未获准",
+      "noCamera": "未检测到可用摄像头",
+      "deviceBusy": "摄像头暂不可用，可能被占用或设备异常",
+      "insecureContext": "请通过 HTTPS 或 localhost 打开页面后使用摄像头",
+      "browserUnsupported": "当前浏览器不支持姿态捕捉功能",
+      "modelLoadFailed": "模型加载失败，预设演示仍可使用",
+      "rigLoadFailed": "角色模型加载失败，请重试",
+      "resourceTimeout": "资源加载超时，请重试",
+      "cameraInterrupted": "摄像头连接中断"
+    },
+    "hints": {
+      "upperBodyInFrame": "请确保双肩和双腕处于画面中",
+      "faceCameraHold": "请正对镜头并短暂保持姿态",
+      "returnToFrame": "请回到画面，等待姿态重新识别"
+    },
+    "privacy": {
+      "cameraOnlyNoMic": "只使用摄像头，不申请麦克风权限",
+      "localProcessingOnly": "画面与姿态关键点仅在设备本地处理",
+      "noUploadNoRecord": "数据不上传，默认不录制",
+      "firstTimeResourceDownload": "初次使用需下载模型资源",
+      "staticNetworkOnly": "仅浏览器普通网页与静态资源有网络请求"
+    },
+    "metrics": {
+      "renderFps": "渲染帧率",
+      "poseUpdateRate": "姿态更新率",
+      "debugDisplay": "状态与调试显示"
+    }
   }
 }
