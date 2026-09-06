@@ -60,6 +60,13 @@ const synthetic = () => {
 try {
   checks.browser = await browser.version();
   const page = await load(() => { navigator.mediaDevices.getUserMedia = () => { throw new Error('Unexpected camera request'); }; });
+  checks.sourceLink = await page.locator('#source-link').evaluate(link => ({ href: link.href, target: link.target, title: link.title, ariaLabel: link.getAttribute('aria-label') }));
+  assert.deepEqual(checks.sourceLink, {
+    href: 'https://github.com/grapeot/psyduck-demo',
+    target: '_blank',
+    title: 'View repository source on GitHub',
+    ariaLabel: 'View repository source on GitHub',
+  });
   checks.initialNoML = !requests.some(r => /vision|\.task|pose-worker/.test(r.url)); assert.ok(checks.initialNoML);
   checks.connectedSkin = await page.evaluate(inspectConnectedSkin);
   checks.rig = await page.evaluate(() => {
@@ -256,5 +263,5 @@ try {
   const report = JSON.stringify({ output, checks, screenshots, errors, requests, responses, failedRequests, serverRequests }, null, 2);
   await writeFile(`${output}/report.json`, report);
   await writeFile('test-results/browser-report.json', report);
-  await browser.close(); await new Promise(r => server.close(r));
+  await browser.close(); server.closeAllConnections(); await new Promise(r => server.close(r));
 }
