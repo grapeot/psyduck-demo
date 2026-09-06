@@ -7,19 +7,24 @@ import { Retarget } from './retarget.js';
 import { CameraController } from './camera.js';
 import './style.css';
 
-const c = copy, $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
+const languageKey = 'psyduck-language';
+let language = 'en';
+try { if (copy[localStorage.getItem(languageKey)]) language = localStorage.getItem(languageKey); } catch { /* Storage can be unavailable. */ }
+let c = copy[language];
 document.title = c.app.title;
 $('app').innerHTML = `<main class="page">
-  <header><a id="source-link" class="source-link" href="https://github.com/grapeot/psyduck-demo" target="_blank" rel="noreferrer" title="View repository source on GitHub" aria-label="View repository source on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.22c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.3-5.28-1.29-5.28-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg></a><h1>${c.app.title}</h1><p>${c.app.description}</p></header>
-  <section class="stage"><canvas id="scene" aria-label="${c.app.title}"></canvas><div class="stage-note">${c.status.upperBodyOnly}</div></section>
+  <header><a id="source-link" class="source-link" href="https://github.com/grapeot/psyduck-demo" target="_blank" rel="noreferrer" title="${c.app.githubLinkTitle}" aria-label="${c.app.githubLinkAriaLabel}"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.22c-3.22.7-3.9-1.37-3.9-1.37-.52-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.3-5.28-1.29-5.28-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.16 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z"/></svg></a><h1 id="app-title">${c.app.title}</h1><p id="app-description">${c.app.description}</p></header>
+  <section class="stage"><canvas id="scene" aria-label="${c.app.sceneAriaLabel}"></canvas><div id="stage-note" class="stage-note">${c.status.upperBodyOnly}</div></section>
   <aside class="panel">
+    <label class="language-control" for="language"><span id="language-label">${c.app.languageSelectorLabel}</span><select id="language"><option value="en">${c.app.languageEn}</option><option value="zh-CN">${c.app.languageZh}</option></select></label>
     <section><div id="status" class="status" role="status" aria-live="polite"></div><p id="hint" class="hint"></p><div class="progress"><span id="progress"></span></div></section>
     <div class="actions"><button id="start" class="primary" disabled>${c.actions.startFollowing}</button><button id="rig-retry" hidden>${c.actions.retry}</button><button id="stop" hidden>${c.actions.cancel}</button><button id="calibrate" disabled>${c.actions.recalibrate}</button></div>
     <section><div id="presets">${Object.entries(c.presets).map(([id, label]) => `<button data-preset="${id}" disabled aria-pressed="${id === 'idle'}">${label}</button>`).join('')}</div><div class="actions" style="margin-top:8px"><button id="auto" disabled aria-pressed="false">${c.actions.autoDemo}</button><button id="view" disabled>${c.actions.viewModel}</button></div></section>
-    <section><label><input id="mirror" type="checkbox" checked>${c.actions.mirrorTracking}</label><div class="actions"><button id="preview-toggle" aria-pressed="true">${c.actions.hidePreview}</button><button id="skeleton-toggle" aria-pressed="false">${c.actions.showSkeleton}</button></div><p id="camera-note" class="fine"></p></section>
+    <section><label><input id="mirror" type="checkbox" checked><span id="mirror-label">${c.actions.mirrorTracking}</span></label><div class="actions"><button id="preview-toggle" aria-pressed="true">${c.actions.hidePreview}</button><button id="skeleton-toggle" aria-pressed="false">${c.actions.showSkeleton}</button></div><p id="camera-note" class="fine"></p></section>
     <div id="preview" class="preview mirrored"><video id="video" muted playsinline></video><canvas id="landmarks" width="640" height="480"></canvas><div id="preview-label" class="preview-label"></div></div>
-    <details><summary>${c.metrics.debugDisplay}</summary><p class="metric" id="metrics"></p><p>${c.app.scopeNotice}</p></details>
-    <section class="privacy fine"><p>${c.privacy.cameraOnlyNoMic}</p><p>${c.privacy.localProcessingOnly}</p><p>${c.privacy.noUploadNoRecord}</p><p>${c.privacy.firstTimeResourceDownload}</p><a href="${import.meta.env.BASE_URL}static.html">${c.actions.viewModel}</a></section>
+    <details><summary id="debug-label">${c.metrics.debugDisplay}</summary><p class="metric" id="metrics"></p><p id="scope-notice">${c.app.scopeNotice}</p></details>
+    <section class="privacy fine"><p id="privacy-camera">${c.privacy.cameraOnlyNoMic}</p><p id="privacy-local">${c.privacy.localProcessingOnly}</p><p id="privacy-record">${c.privacy.noUploadNoRecord}</p><p id="privacy-download">${c.privacy.firstTimeResourceDownload}</p><a id="static-link" href="${import.meta.env.BASE_URL}static.html">${c.actions.viewModel}</a></section>
   </aside></main>`;
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ canvas: $('scene'), antialias: true, alpha: true });
@@ -45,11 +50,17 @@ for (const r of [2.5, 2.7]) {
 }
 let rig, pose = neutral(), desired = neutral(), selected = 'idle', auto = false, active = false, initializing = false, showPreview = true, showSkeleton = false;
 let lastPoints = [], poseCount = 0, renderCount = 0, metricTime = performance.now(), lastFrame = metricTime;
+let statusName = 'cameraOff', hintName = '', metricValues = null;
 const retarget = new Retarget();
 let rigState = 'loading';
 function status(name) {
   if (!rig) name = rigState === 'failed' ? 'rigLoadFailed' : 'loadingResources';
+  statusName = name;
   $('status').textContent = c.status[name] || c.errors[name] || name;
+}
+function hint(name = '') { hintName = name; $('hint').textContent = name ? c.hints[name] : ''; }
+function renderMetrics() {
+  $('metrics').textContent = metricValues ? `${c.metrics.renderFps}: ${metricValues.render} · ${c.metrics.poseUpdateRate}: ${metricValues.pose}` : '';
 }
 function cameraNotice() {
   $('preview').hidden = !showPreview || !active;
@@ -67,18 +78,24 @@ const controller = new CameraController({ video: $('video'), assets,
     $('calibrate').disabled = !active || initializing;
     $('start').textContent = c.errors[name] ? c.actions.retry : c.actions.startFollowing;
     status(name); cameraNotice();
-    $('hint').textContent = active ? c.hints.upperBodyInFrame : '';
+    hint(active ? 'upperBodyInFrame' : '');
     if (!active) { retarget.reset(); desired = preset(selected); lastPoints = []; $('progress').style.width = '0%'; }
   },
   onResult(data) {
     lastPoints = data.landmarks; poseCount++;
     desired = retarget.update(data.landmarks, data.width, data.height, data.timestamp, $('mirror').checked);
     status(retarget.status);
-    $('hint').textContent = c.hints[retarget.status === 'personNotFound' ? 'returnToFrame' : retarget.status === 'calibrating' ? 'faceCameraHold' : 'upperBodyInFrame'];
+    hint(retarget.status === 'personNotFound' ? 'returnToFrame' : retarget.status === 'calibrating' ? 'faceCameraHold' : 'upperBodyInFrame');
     $('progress').style.width = `${Math.min(100, retarget.validMs / 20)}%`;
   },
 });
 status('cameraOff'); cameraNotice();
+$('language').value = language;
+$('language').onchange = () => {
+  language = copy[$('language').value] ? $('language').value : 'en'; c = copy[language];
+  try { localStorage.setItem(languageKey, language); } catch { /* Storage can be unavailable. */ }
+  applyLanguage();
+};
 $('start').onclick = () => {
   if (!rig) return;
   if (!isSecureContext) { status('insecureContext'); return; }
@@ -96,6 +113,26 @@ $('skeleton-toggle').onclick = () => {
   showSkeleton = !showSkeleton; $('skeleton-toggle').textContent = c.actions[showSkeleton ? 'hideSkeleton' : 'showSkeleton']; $('skeleton-toggle').setAttribute('aria-pressed', showSkeleton);
 };
 function updateAuto() { $('auto').textContent = c.actions[auto ? 'pauseDemo' : 'autoDemo']; $('auto').setAttribute('aria-pressed', auto); }
+function applyLanguage() {
+  document.documentElement.lang = language; document.title = c.app.title;
+  $('app-title').textContent = c.app.title; $('app-description').textContent = c.app.description;
+  $('scene').setAttribute('aria-label', c.app.sceneAriaLabel); $('stage-note').textContent = c.status.upperBodyOnly;
+  $('source-link').title = c.app.githubLinkTitle; $('source-link').setAttribute('aria-label', c.app.githubLinkAriaLabel);
+  $('language-label').textContent = c.app.languageSelectorLabel;
+  $('language').options[0].textContent = c.app.languageEn; $('language').options[1].textContent = c.app.languageZh;
+  $('rig-retry').textContent = c.actions.retry; $('calibrate').textContent = c.actions.recalibrate; $('view').textContent = c.actions.viewModel;
+  $('mirror-label').textContent = c.actions.mirrorTracking;
+  document.querySelectorAll('[data-preset]').forEach(button => { button.textContent = c.presets[button.dataset.preset]; });
+  $('preview-toggle').textContent = c.actions[showPreview ? 'hidePreview' : 'showPreview'];
+  $('skeleton-toggle').textContent = c.actions[showSkeleton ? 'hideSkeleton' : 'showSkeleton'];
+  $('debug-label').textContent = c.metrics.debugDisplay; $('scope-notice').textContent = c.app.scopeNotice;
+  $('privacy-camera').textContent = c.privacy.cameraOnlyNoMic; $('privacy-local').textContent = c.privacy.localProcessingOnly;
+  $('privacy-record').textContent = c.privacy.noUploadNoRecord; $('privacy-download').textContent = c.privacy.firstTimeResourceDownload;
+  $('static-link').textContent = c.actions.viewModel;
+  $('start').textContent = c.errors[statusName] ? c.actions.retry : c.actions.startFollowing;
+  $('stop').textContent = initializing ? c.actions.cancel : c.actions.stopFollowing;
+  updateAuto(); status(statusName); hint(hintName); cameraNotice(); renderMetrics();
+}
 function select(name) {
   selected = name;
   document.querySelectorAll('[data-preset]').forEach(b => b.setAttribute('aria-pressed', b.dataset.preset === selected));
@@ -134,7 +171,7 @@ renderer.setAnimationLoop(now => {
   controls.update(); drawPoints(); renderer.render(scene, camera); renderCount++;
   if (now - metricTime > 1000) {
     const seconds = (now - metricTime) / 1000;
-    $('metrics').textContent = `${c.metrics.renderFps}: ${(renderCount / seconds).toFixed(0)} · ${c.metrics.poseUpdateRate}: ${(poseCount / seconds).toFixed(1)}`;
+    metricValues = { render: (renderCount / seconds).toFixed(0), pose: (poseCount / seconds).toFixed(1) }; renderMetrics();
     renderCount = poseCount = 0; metricTime = now;
   }
   window.renderReady = Boolean(rig);
@@ -151,9 +188,10 @@ async function loadRig() {
   }
 }
 $('rig-retry').onclick = () => { if (rigState === 'failed') loadRig(); };
+applyLanguage();
 await loadRig();
 // Inspection surface contains no camera frames or recorded data.
-window.psyduck = { get rig() { return rig; }, get pose() { return pose; }, controller, retarget,
+window.psyduck = { get rig() { return rig; }, get pose() { return pose; }, get language() { return language; }, controller, retarget,
   setView(name) { const positions = { front: [0, 2.9, 10.7], side: [10.7, 2.9, 0], back: [0, 2.9, -10.7], quarter: [6, 3.3, 9] }; camera.position.set(...positions[name]); controls.update(); },
   get cameraLocked() { return !controls.enabled; },
   get cameraPosition() { return camera.position.toArray(); },
