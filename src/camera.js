@@ -2,7 +2,8 @@ export class CameraController {
   constructor({ video, assets, onState, onResult, getUserMedia = c => navigator.mediaDevices.getUserMedia(c),
     makeWorker = () => new Worker(new URL('./generated/pose-worker.js', import.meta.url)),
     bitmap = v => createImageBitmap(v), clock = () => performance.now(), schedule = f => setTimeout(f, 50), unschedule = id => clearTimeout(id),
-    initTimeout = 30000, frameTimeout = 10000 }) {
+    // Initial loading includes large WASM/model downloads over remote connections.
+    initTimeout = 300000, frameTimeout = 10000 }) {
     Object.assign(this, { video, assets, onState, onResult, getUserMedia, makeWorker, bitmap, clock, schedule, unschedule, initTimeout, frameTimeout });
     this.generation = 0; this.session = null;
   }

@@ -53,6 +53,11 @@ test('worker failure, timeout and local track end release resources', async () =
   const k = harness({ initTimeout: 5 }); k.worker.postMessage = () => {}; await k.controller.start();
   assert.equal(k.states.at(-1), 'resourceTimeout'); assert.equal(k.worker.terminated, 1);
 });
+test('initial downloads have a larger timeout without relaxing frame watchdog', () => {
+  const h = harness();
+  assert.equal(h.controller.initTimeout, 300000);
+  assert.equal(h.controller.frameTimeout, 10000);
+});
 test('cancel during initialization resolves start and rejects late ready', async () => {
   const h = harness(); h.worker.postMessage = m => h.worker.messages.push(m);
   const starting = h.controller.start(); await flush(); const init = h.worker.messages[0]; h.controller.stop(); await starting;
